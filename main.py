@@ -1,8 +1,9 @@
 # main.py
 
 import pyray as pr
+from raylib.defines import KEY_LEFT, KEY_RIGHT
 
-from game.logic import apply_physics
+from game.logic import apply_physics, handle_input
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -17,9 +18,11 @@ pr.set_target_fps(60)
 player_state = {
     "x_pos": SCREEN_WIDTH / 2,
     "y_pos": 0,
+    "x_vel": 0,
     "y_vel": 0,
     "width": 40,
     "height": 50,
+    "speed": 5,
 }
 
 # Configuração da física do nosso mundo
@@ -32,6 +35,14 @@ world_physics = {
 # 2. Game Loop Principal
 while not pr.window_should_close():
     # 3. Update
+    # Lida com os inputs
+    player_state["x_vel"] = 0
+    if pr.is_key_down(KEY_RIGHT):
+        player_state = handle_input(player_state, "RIGHT")
+    elif pr.is_key_down(KEY_LEFT):
+        player_state = handle_input(player_state, "LEFT")
+
+    # Aplica a Física
     player_state = apply_physics(player_state, world_physics)
 
     # 4. Draw
