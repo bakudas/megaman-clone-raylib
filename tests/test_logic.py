@@ -68,10 +68,11 @@ def test_move_right_input_sets_positive_horizontal_velocity():
     # 1. Arrange
     # (Given) Dado um jogador parado
     player = Player(x=200, y=390, width=40, height=50, speed=5)
+    world_physics = {"floor": 400, "gravity": 1}
 
     # 2. Act
     # (When) Quando o input "direita" é processo
-    handle_input(player, "RIGHT")
+    handle_input(player, "RIGHT", world_physics)
 
     # 3. Assert
     # (Then) Então a velocidade horizontal deve ser positiva
@@ -83,12 +84,35 @@ def test_move_left_input_sets_negative_horizontal_velocity():
     # 1. Arrange
     # (Given) Dado um jogador parado
     player = Player(x=200, y=390, width=40, height=50, speed=5)
+    world_physics = {"floor": 400, "gravity": 1}
 
     # 2. Act
     # (When) Quando o input "direita" é processo
-    handle_input(player, "LEFT")
+    handle_input(player, "LEFT", world_physics)
 
     # 3. Assert
     # (Then) Então a velocidade horizontal deve ser negativa
     assert player.x_vel < 0
     assert player.x_vel == -5
+
+
+def test_player_jumps_from_the_ground():
+    # 1. Arrange
+    # (Given) Dado um jogador no chão
+    world_physics = {"floor": 400, "gravity": 1}
+    player = Player(x=100, y=350, width=40, height=50, speed=5)
+    # x=350 significa que player.bottom está em 400, exatamente no chão
+    player.jump_strength = 15  # força do pulo
+
+    # 2. Act
+    # (When) quando o input "JUMP" é processado
+    handle_input(player, "JUMP", world_physics)
+
+    # 3. Assert
+    # (Then) Então a velocidade vertical do jogador deve ser negativa (para cima)
+    assert player.y_vel < 0
+    assert player.y_vel == -player.jump_strength
+
+
+def test_player_cannot_jump_in_mid_air():
+    pass

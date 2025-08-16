@@ -1,7 +1,7 @@
 # main.py
 
 import pyray as pr
-from raylib.defines import KEY_LEFT, KEY_RIGHT
+from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE
 
 from game.logic import apply_physics, handle_input
 from game.player import Player
@@ -16,13 +16,7 @@ pr.init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Mega Man TDD Curso")
 pr.set_target_fps(60)
 
 # Estado inicial do jogador
-player = Player(
-    x=SCREEN_WIDTH / 2,
-    y=0,
-    width=40,
-    height=50,
-    speed=5,
-)
+player = Player(x=SCREEN_WIDTH / 2, y=0, width=40, height=50, speed=5, jump_strength=12)
 
 # Configuração da física do nosso mundo
 world_physics = {
@@ -31,6 +25,7 @@ world_physics = {
 }
 # ---------------------------------------------------
 
+
 def run_game():
     # 2. Game Loop Principal
     while not pr.window_should_close():
@@ -38,9 +33,13 @@ def run_game():
         # Lida com os inputs
         player.x_vel = 0
         if pr.is_key_down(KEY_RIGHT):
-            handle_input(player, "RIGHT")
+            handle_input(player, "RIGHT", world_physics)
         elif pr.is_key_down(KEY_LEFT):
-            handle_input(player, "LEFT")
+            handle_input(player, "LEFT", world_physics)
+
+        # is_key_pressed para o pulo para evitar pulos repetidos se segurar a tecla
+        if pr.is_key_pressed(GLFW_KEY_SPACE):
+            handle_input(player, "JUMP", world_physics)
 
         # Aplica a Física
         apply_physics(player, world_physics)
@@ -70,8 +69,9 @@ def run_game():
 
         pr.end_drawing()
 
-# 5. Final
+    # 5. Final
     pr.close_window()
+
 
 if __name__ == "__main__":
     run_game()

@@ -27,16 +27,22 @@ def apply_physics(player: Player, world_physics: dict) -> None:
         player.y_vel = 0  # zera a velocidade vertival
 
 
-def handle_input(player: Player, input) -> None:
+def handle_input(player: Player, input_direction: str, world_physics: dict) -> None:
     """
     Atualiza o estado do jogador com base no input
     """
     speed = player.speed
 
-    if input == "RIGHT":
+    # Movimento horizontal
+    if input_direction == "RIGHT":
         player.x_vel += speed
-    elif input == "LEFT":
+    elif input_direction == "LEFT":
         player.x_vel -= speed
+
+    # Lógica do Pulo
+    if input_direction == "JUMP":
+        if player.is_on_ground(world_physics):
+            player.y_vel = -player.jump_strength
 
 
 def jump(player_state):
