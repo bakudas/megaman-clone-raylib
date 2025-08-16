@@ -21,7 +21,7 @@ def apply_physics(player: Player, world_physics: dict) -> None:
     player.y_pos += player.y_vel
 
     # Checa colisão com plataformas
-    landed_on_platform = False
+    collion_occurred = False
     player_rect = pr.Rectangle(player.x_pos, player.y_pos, player.width, player.height)
 
     for plat in world_physics.get("platforms", []):
@@ -33,19 +33,29 @@ def apply_physics(player: Player, world_physics: dict) -> None:
         # 3) a base do jogador estava ACIMA do topo da plataforma no frame anterior
         is_colliding = pr.check_collision_recs(player_rect, plat_rect)
         is_falling = player.y_vel >= 0
+        is_rising = player.y_vel < 0
         was_above = (previous_y_pos + player.height) <= plat.y
+        was_bellow = previous_y_pos >= (plat.y + plat.height)
 
-        if is_colliding and is_falling and was_above:
-            # Para plataformas 'pass-through', a condição de queda é obrigatória
-            # Para 'solid', aterrissar é o comportamento padrão
-            if plat.type == "solid" or (plat.type == "pass-through" and is_falling):
-                player.y_pos = plat.y - player.height  # corrige a posição do player
+        if is_colliding:
+            # CASO 1: ATERRISSANDO NA PLATAFORMA
+            if is_falling and was_above:
+                # Para plataformas 'pass-through', a condição de queda é obrigatória
+                # Para 'solid', aterrissar é o comportamento padrão
+                if plat.type == "solid" or plat.type == "pass-through":
+                    player.y_pos = plat.y - player.height  # corrige a posição do player
+                    player.y_vel = 0  # parada súbita pela colição
+                    collion_occurred = True
+                    break
+            # CASO 2: BATENDO A CABEÇA NO FUNDO DA PLATAFORMA
+            if plat.type == "solid" and is_rising and was_bellow:
+                player.y_pos = plat.y + plat.height  # corrige a posição do player
                 player.y_vel = 0
-                landed_on_platform = True
+                collion_occurred = True
                 break
 
     # Aplica gravidade se não estivermos no chão de uma plataforma
-    if not landed_on_platform:
+    if not collion_occurred:
         player.y_vel += gravity
 
     # Aplica movimento horizontal

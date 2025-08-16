@@ -1,5 +1,4 @@
 # tests/test_logic.py
-from game import platforms
 from game.logic import apply_physics, handle_input, shoot
 from game.platforms import Platform
 from game.player import Player
@@ -210,4 +209,22 @@ def test_player_lands_on_passthrough_platform():
     # 3. Assert
     # (Then) Então o jogador deve parar em cima da plataforma
     assert player.y_pos == 200
+    assert player.y_vel == 0
+
+
+def test_player_collides_with_bottom_of_solid_platform():
+    # 1. Arrange
+    # (Given) Dado um jogador pulando em direção ao fundo de uma plataforma
+    player = Player(x=100, y=275, width=40, height=50, speed=5, jump_strength=15)
+    player.y_vel = -10  # pulando (subindo)
+    platforms = [Platform(x=80, y=250, width=100, height=20, p_type="solid")]
+    world_physics = {"gravity": 1, "platforms": platforms}
+
+    # 2. Act
+    # (When) Quando a física é aplicada
+    apply_physics(player, world_physics)
+
+    # 3. Assert
+    # (Then) Então o jogador deve parar no fundo da plataforma e sua velocidade de subida de ser zero
+    assert player.y_pos == 270  # 250 (player.x_pos) + 20 (altura plataforma)
     assert player.y_vel == 0
