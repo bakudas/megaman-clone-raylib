@@ -4,6 +4,7 @@ import pyray as pr
 from raylib.defines import KEY_LEFT, KEY_RIGHT
 
 from game.logic import apply_physics, handle_input
+from game.player import Player
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -15,15 +16,13 @@ pr.init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Mega Man TDD Curso")
 pr.set_target_fps(60)
 
 # Estado inicial do jogador
-player_state = {
-    "x_pos": SCREEN_WIDTH / 2,
-    "y_pos": 0,
-    "x_vel": 0,
-    "y_vel": 0,
-    "width": 40,
-    "height": 50,
-    "speed": 5,
-}
+player = Player(
+    x=SCREEN_WIDTH / 2,
+    y=0,
+    width=40,
+    height=50,
+    speed=5,
+)
 
 # Configuração da física do nosso mundo
 world_physics = {
@@ -36,14 +35,14 @@ world_physics = {
 while not pr.window_should_close():
     # 3. Update
     # Lida com os inputs
-    player_state["x_vel"] = 0
+    player.x_vel = 0
     if pr.is_key_down(KEY_RIGHT):
-        player_state = handle_input(player_state, "RIGHT")
+        handle_input(player, "RIGHT")
     elif pr.is_key_down(KEY_LEFT):
-        player_state = handle_input(player_state, "LEFT")
+        handle_input(player, "LEFT")
 
     # Aplica a Física
-    player_state = apply_physics(player_state, world_physics)
+    apply_physics(player, world_physics)
 
     # 4. Draw
     pr.begin_drawing()
@@ -61,10 +60,10 @@ while not pr.window_should_close():
     # Desenha o jogador
     # Usamos os dados do nosso dic 'player_state'
     pr.draw_rectangle(
-        int(player_state["x_pos"]),
-        int(player_state["y_pos"]),
-        int(player_state["width"]),
-        int(player_state["height"]),
+        int(player.x_pos),
+        int(player.y_pos),
+        int(player.width),
+        int(player.height),
         pr.SKYBLUE,
     )
 

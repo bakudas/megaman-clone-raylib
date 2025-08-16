@@ -1,50 +1,42 @@
 # game/logic.py
+from game.player import Player
 
 
-def apply_physics(player_state, world_physics):
+def apply_physics(player: Player, world_physics: dict) -> None:
     """
     Aplica as forças de física (por enquanto, só gravidade) ao estado do jogador.
     :param player_state: player state.
     :param world_physics: world general physics.
     """
     # Copiamos o estado para não modificar o original diretamente (boa prática)
-    new_state = player_state.copy()
     gravity = world_physics["gravity"]
     floor_level = world_physics["floor"]
 
     # Atualização da Posição
     # A posição é atualizada pela velocidade do frame anterior
-    new_state["y_pos"] += new_state["y_vel"]
-    new_state["x_pos"] += new_state["x_vel"]
+    player.x_pos += player.x_vel
+    player.y_pos += player.y_vel
 
     # Atualização da velocidade
     # A velocidade é atualizada pela gravidade para o próximo frame
-    new_state["y_vel"] += gravity
+    player.y_vel += gravity
 
     # Checagem de colisão com o chão
-    playe_bottom = new_state["y_pos"] + new_state["height"]
-    if playe_bottom >= floor_level:
-        new_state["y_pos"] = (
-            floor_level - player_state["height"]
-        )  # corrige a posição do player
-        new_state["y_vel"] = 0
-
-    return new_state
+    if player.bottom >= floor_level:
+        player.y_pos = floor_level - player.height  # corrige a posição do player
+        player.y_vel = 0  # zera a velocidade vertival
 
 
-def handle_input(player_state, input):
+def handle_input(player: Player, input) -> None:
     """
     Atualiza o estado do jogador com base no input
     """
-    new_state = player_state.copy()
-    speed = player_state["speed"]
+    speed = player.speed
 
     if input == "RIGHT":
-        new_state["x_vel"] += speed
+        player.x_vel += speed
     elif input == "LEFT":
-        new_state["x_vel"] -= speed
-
-    return new_state
+        player.x_vel -= speed
 
 
 def jump(player_state):
