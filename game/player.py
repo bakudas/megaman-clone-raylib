@@ -2,7 +2,7 @@
 
 
 class Player:
-    def __init__(self, x=0, y=0, width=0, height=0, speed=0, jump_strength=0) -> None:
+    def __init__(self, x, y, width=0, height=0, speed=0, jump_strength=0) -> None:
         self.x_pos: float = x
         self.y_pos: float = y
         self.x_vel: float = 0

@@ -115,4 +115,14 @@ def test_player_jumps_from_the_ground():
 
 
 def test_player_cannot_jump_in_mid_air():
-    pass
+    # Given (Dado) um jogador no ar
+    world_physics = {"floor": 400, "gravity": 1}
+    player = Player(x=100, y=200, width=40, height=50, speed=5)
+    player.y_vel = 5  # Caindo
+    player.jump_strength = 15
+
+    # When (Quando) o input "JUMP" é processado
+    handle_input(player, "JUMP", world_physics)
+
+    # Then (Então) a velocidade vertical NÃO deve mudar
+    assert player.y_vel == 5
