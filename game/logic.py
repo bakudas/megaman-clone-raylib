@@ -1,4 +1,6 @@
 # game/logic.py
+import pyray as pr
+
 from game.player import Player
 from game.bullet import Bullet
 
@@ -9,23 +11,45 @@ def apply_physics(player: Player, world_physics: dict) -> None:
     :param player_state: player state.
     :param world_physics: world general physics.
     """
+    # Armazena a posição anterior para checagem de colisão
+    previous_y_pos = player.y_pos
+
     # Copiamos o estado para não modificar o original diretamente (boa prática)
     gravity = world_physics["gravity"]
-    floor_level = world_physics["floor"]
 
-    # Atualização da Posição
-    # A posição é atualizada pela velocidade do frame anterior
-    player.x_pos += player.x_vel
+    # Aplica a velocidade vertical
     player.y_pos += player.y_vel
 
-    # Atualização da velocidade
-    # A velocidade é atualizada pela gravidade para o próximo frame
-    player.y_vel += gravity
+    # Checa colisão com plataformas
+    landed_on_platform = False
+    player_rect = pr.Rectangle(player.x_pos, player.y_pos, player.width, player.height)
 
-    # Checagem de colisão com o chão
-    if player.bottom >= floor_level:
-        player.y_pos = floor_level - player.height  # corrige a posição do player
-        player.y_vel = 0  # zera a velocidade vertival
+    for plat in world_physics.get("platforms", []):
+        plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
+
+        # Condições para aterrissar:
+        # 1) os retângulos colidem
+        # 2) o jogador está caido (ou parado)
+        # 3) a base do jogador estava ACIMA do topo da plataforma no frame anterior
+        is_colliding = pr.check_collision_recs(player_rect, plat_rect)
+        is_falling = player.y_vel >= 0
+        was_above = (previous_y_pos + player.height) <= plat.y
+
+        if is_colliding and is_falling and was_above:
+            # Para plataformas 'pass-through', a condição de queda é obrigatória
+            # Para 'solid', aterrissar é o comportamento padrão
+            if plat.type == "solid" or (plat.type == "pass-through" and is_falling):
+                player.y_pos = plat.y - player.height  # corrige a posição do player
+                player.y_vel = 0
+                landed_on_platform = True
+                break
+
+    # Aplica gravidade se não estivermos no chão de uma plataforma
+    if not landed_on_platform:
+        player.y_vel += gravity
+
+    # Aplica movimento horizontal
+    player.x_pos += player.x_vel
 
 
 def handle_input(player: Player, input_direction: str, world_physics: dict) -> None:

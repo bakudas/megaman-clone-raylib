@@ -5,6 +5,7 @@ description = "just another megaman clone with educational purpose"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "ipdb>=0.13.13",
     "pytest>=8.4.1",
     "raylib>=5.5.0.2",
 ]

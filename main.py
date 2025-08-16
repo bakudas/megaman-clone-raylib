@@ -6,6 +6,7 @@ from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X
 from game.logic import apply_physics, handle_input, shoot
 from game.player import Player
 from game.bullet import Bullet
+from game.platforms import Platform
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -16,13 +17,23 @@ FLOOR_LEVEL = 400
 pr.init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Mega Man TDD Curso")
 pr.set_target_fps(60)
 
+# Cria uma lista de plataformas para definir o nível
+level_platforms = [
+    # Chão
+    Platform(0, 400, SCREEN_WIDTH, 50, "solid"),
+    # Plataformas no ar
+    Platform(100, 300, 150, 20, "solid"),
+    Platform(300, 250, 100, 20, "pass-through"),
+    Platform(500, 200, 200, 20, "solid"),
+]
+
 # Estado inicial do jogador
 player = Player(x=SCREEN_WIDTH / 2, y=0, width=40, height=50, speed=5, jump_strength=12)
 
 # Configuração da física do nosso mundo
 world_physics = {
-    "gravity": 0.25,  # um valor menor funciona melhor para 60 FPS
-    "floor": FLOOR_LEVEL,
+    "gravity": 0.5,  # um valor menor funciona melhor para 60 FPS
+    "platforms": level_platforms,
 }
 
 # Lista para guardar as balas ativas
@@ -69,10 +80,10 @@ def run_game():
 
         pr.clear_background(pr.DARKGRAY)
 
-        # Desenha o chão
-        pr.draw_rectangle(
-            0, FLOOR_LEVEL, SCREEN_WIDTH, SCREEN_HEIGHT - FLOOR_LEVEL, pr.GREEN
-        )
+        # Desenha as plataformas
+        for plat in world_physics["platforms"]:
+            color = pr.GRAY if plat.type == "solid" else pr.LIGHTGRAY
+            pr.draw_rectangle(plat.x, plat.y, plat.width, plat.height, color)
 
         # Texto debug
         pr.draw_text("Nosso 'Mega Man' caindo!", 200, 20, 20, pr.LIGHTGRAY)

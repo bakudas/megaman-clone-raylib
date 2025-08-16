@@ -1,6 +1,9 @@
 # game/player.py
 
 
+from game import platforms
+
+
 class Player:
     def __init__(self, x, y, width=0, height=0, speed=0, jump_strength=0) -> None:
         self.x_pos: float = x
@@ -24,4 +27,17 @@ class Player:
         """
         Verifica se o jogador está no chão.
         """
-        return self.bottom >= world_physics["floor"]
+
+        for plat in world_physics.get("platforms", []):
+            # Verifica se o jogador está horizontalmente alinhado com a plataforma
+            is_horizontaly_aligned = (
+                self.x_pos < plat.x + plat.width and self.x_pos + self.width > plat.x
+            )
+
+            # Verifica se a base do jogador está exatamente no topo de alguma plataforma
+            is_on_top = self.bottom == plat.y
+
+            if is_horizontaly_aligned and is_on_top:
+                return True  # encontrou um chão, pode parar de procurar
+
+        return False  # segue o baile
