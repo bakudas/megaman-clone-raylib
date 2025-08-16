@@ -37,3 +37,9 @@ def test_player_facing_direction_defaults_right(new_player):
     # 3. Assert
     # (Then) Então o player por padrão na criação deve estar virado para a direita
     assert new_player.facing_direction == "RIGHT"
+
+
+def test_player_bottom_property(new_player):
+    # 3. Assert
+    # (Then) Então a propriedade bottom retorna a base do jogador
+    assert new_player.bottom == 250  # 200 (y_pos) + 50 (height)
