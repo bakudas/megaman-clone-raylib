@@ -7,6 +7,7 @@ from game.logic import apply_physics, handle_input, shoot
 from game.player import Player
 from game.bullet import Bullet
 from game.platforms import Platform
+from game.camera import Camera
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -24,22 +25,16 @@ pr.set_target_fps(60)
 target_texture = pr.load_render_texture(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT)
 
 # Inicializar a Camera
-camera = pr.Camera2D()
-camera.target = pr.Vector2(0, 0)  # o ponto que a camera olha
-camera.offset = pr.Vector2(
-    VIRTUAL_SCREEN_WIDTH / 2, VIRTUAL_SCREEN_HEIGHT / 2
-)  # centro da tela
-camera.rotation = 0.0
-camera.zoom = 1.0
+camera = Camera(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT)
 
 # Cria uma lista de plataformas para definir o nível
 level_platforms = [
     # Chão
     Platform(0, 224, SCREEN_WIDTH, 16, "solid"),
     # Plataformas no ar
-    Platform(96, 96, 64, 16, "solid"),
-    Platform(128, 128, 96, 16, "pass-through"),
-    Platform(156, 156, 64, 16, "solid"),
+    Platform(128, 96, 64, 16, "solid"),
+    Platform(256, 128, 96, 16, "pass-through"),
+    Platform(468, 156, 64, 16, "solid"),
 ]
 
 # Estado inicial do jogador
@@ -53,7 +48,7 @@ world_physics = {
 
 # Lista para guardar as balas ativas
 bullets = []
-BULLET_SPEED = 2.0
+BULLET_SPEED = 5.0
 # ---------------------------------------------------
 
 
@@ -90,17 +85,8 @@ def run_game():
         # List comprehension para criar uma nova lista apenas com as balas visíveis
         bullets = [b for b in bullets if 0 < b.x_pos < SCREEN_WIDTH]
 
-        # Atualizar o alvo da camera
-        # o alvo inicial é um pocuo a frente do jogador
-        look_ahead = 2.5 * (1 if player.facing_direction == "RIGHT" else -1)
-        target_x = player.x_pos + (player.width / 2) * look_ahead
-        target_y = player.y_pos + (player.height / 2) - 16  # olhar um pocuo para cima
-
-        # Suavizar o movimento da camera usando interpolação linear 'lerp'
-        # a camera se move 5% da distância até o alvo a cada frame
-        smoothing_factor = 0.025
-        camera.target.x += (target_x - camera.target.x) * smoothing_factor
-        camera.target.y += (target_y - camera.target.y) * smoothing_factor
+        # Atualizar a camera
+        camera.update(player)
 
         # 4. Draw
         # Começa a desenhar a tela virtual
@@ -110,7 +96,7 @@ def run_game():
         pr.clear_background(pr.DARKGRAY)
 
         # inicia o modo de camera 2D
-        pr.begin_mode_2d(camera)
+        camera.begin_mode()
 
         # Desenha as plataformas
         for plat in world_physics["platforms"]:
@@ -146,18 +132,18 @@ def run_game():
             y_vel: {player.y_vel}
             is_grounded: {player.is_on_ground(world_physics)}
             """,
-            50,
+            0,
             50,
             9,
             pr.LIGHTGRAY,
         )
 
         # termina o modo de camera 2D
-        pr.end_mode_2d()
+        camera.end_mode()
 
         # UI
         # Texto debug
-        pr.draw_text("Just another Megaman clone...", 50, 50, 10, pr.LIGHTGRAY)
+        pr.draw_text("Just another Megaman clone...", 10, 10, 10, pr.LIGHTGRAY)
 
         # terminar o desenho na tela virtual
         pr.end_texture_mode()
