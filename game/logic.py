@@ -15,6 +15,7 @@ def apply_physics(player_state, world_physics):
     # Atualização da Posição
     # A posição é atualizada pela velocidade do frame anterior
     new_state["y_pos"] += new_state["y_vel"]
+    new_state["x_pos"] += new_state["x_vel"]
 
     # Atualização da velocidade
     # A velocidade é atualizada pela gravidade para o próximo frame
@@ -27,6 +28,21 @@ def apply_physics(player_state, world_physics):
             floor_level - player_state["height"]
         )  # corrige a posição do player
         new_state["y_vel"] = 0
+
+    return new_state
+
+
+def handle_input(player_state, input):
+    """
+    Atualiza o estado do jogador com base no input
+    """
+    new_state = player_state.copy()
+    speed = player_state["speed"]
+
+    if input == "RIGHT":
+        new_state["x_vel"] += speed
+    elif input == "LEFT":
+        new_state["x_vel"] -= speed
 
     return new_state
 
