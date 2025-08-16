@@ -1,5 +1,5 @@
 # tests/test_logic.py
-from game.logic import apply_physics, handle_input, jump
+from game.logic import apply_physics, handle_input, shoot
 from game.player import Player
 
 
@@ -33,19 +33,6 @@ def test_velocity_updates_position():
     # 3. Assert
     assert player.y_pos == 110
     assert player.x_pos == 205
-
-
-def test_player_jump():
-    # 1. Arrange
-    player = {"y_pos": 200, "y_vel": 0, "jump_force": 10, "on_ground": True}
-
-    # 2. Act
-    if player["on_ground"]:
-        player = jump(player)
-
-    # 3. Assert
-    assert player["y_vel"] < 0
-    assert not player["on_ground"]
 
 
 def test_player_stops_at_the_floor():
@@ -126,3 +113,59 @@ def test_player_cannot_jump_in_mid_air():
 
     # Then (Então) a velocidade vertical NÃO deve mudar
     assert player.y_vel == 5
+
+
+def test_moving_right_updates_facing_direction():
+    # 1. Arrange
+    # (Given) Dado um jogador
+    player = Player(x=100, y=350, width=40, height=50, speed=5, jump_strength=15)
+
+    # 2. Act
+    # (When) Quando o input "RIGHT" é processdao
+    handle_input(player, "RIGHT", {})  # world_physics não é necessário aqui
+
+    # 3. Assert
+    # (Then) Então a direção deve ser "RIGHT"
+    assert player.facing_direction == "RIGHT"
+
+
+def test_moving_left_updates_facing_direction():
+    # 1. Arrange
+    # (Given) Dado um jogador
+    player = Player(x=100, y=350, width=40, height=50, speed=5, jump_strength=15)
+
+    # 2. Act
+    # (When) Quando o input "LEFT" é processdao
+    handle_input(player, "LEFT", {})  # world_physics não é necessário aqui
+
+    # 3. Assert
+    # (Then) Então a direção deve ser "LEFT"
+    assert player.facing_direction == "LEFT"
+
+
+def test_shoot_bullet_moving_in_player_direction():
+    # 1. Arrange
+    # (Given) Dado um jogador virado para a direita
+    player = Player(x=100, y=200, width=40, height=50, speed=5, jump_strength=15)
+    player.facing_direction = "RIGHT"
+    bullet_speed = 10
+
+    # 2. Act
+    # (When) Quando o jogador atira
+    bullet = shoot(player, bullet_speed)
+
+    # 3. Assert
+    # (Then) Então a bala deve se mover para a direita
+    assert bullet.x_vel > 0
+
+    # 1. Arrang
+    # (Given) Dado um jogador virado para a esquerda
+    player.facing_direction = "LEFT"
+
+    # 2. Act
+    # (When) Quando o jogador atira
+    bullet = shoot(player, bullet_speed)
+
+    # 3. Assert
+    # (Then) Então a bala deve se mover para a direita
+    assert bullet.x_vel < 0

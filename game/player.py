@@ -11,6 +11,7 @@ class Player:
         self.height: int = height
         self.speed: float = speed
         self.jump_strength: float = jump_strength
+        self.facing_direction: str = "RIGHT"
 
     @property
     def bottom(self) -> float:

@@ -1,10 +1,11 @@
 # main.py
 
 import pyray as pr
-from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE
+from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X
 
-from game.logic import apply_physics, handle_input
+from game.logic import apply_physics, handle_input, shoot
 from game.player import Player
+from game.bullet import Bullet
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -23,10 +24,16 @@ world_physics = {
     "gravity": 0.25,  # um valor menor funciona melhor para 60 FPS
     "floor": FLOOR_LEVEL,
 }
+
+# Lista para guardar as balas ativas
+bullets = []
+BULLET_SPEED = 8.0
 # ---------------------------------------------------
 
 
 def run_game():
+    global bullets
+
     # 2. Game Loop Principal
     while not pr.window_should_close():
         # 3. Update
@@ -43,6 +50,19 @@ def run_game():
 
         # Aplica a Física
         apply_physics(player, world_physics)
+
+        # Lógica do tiro
+        if pr.is_key_pressed(GLFW_KEY_X):
+            new_bullet = shoot(player, BULLET_SPEED)
+            bullets.append(new_bullet)
+
+        # Atualizar as balas
+        for bullet in bullets:
+            bullet.update()
+
+        # Remover baloas fora da tela
+        # List comprehension para criar uma nova lista apenas com as balas visíveis
+        bullets = [b for b in bullets if 0 < b.x_pos < SCREEN_WIDTH]
 
         # 4. Draw
         pr.begin_drawing()
@@ -66,6 +86,16 @@ def run_game():
             int(player.height),
             pr.SKYBLUE,
         )
+
+        # Desenha as balas
+        for bullet in bullets:
+            pr.draw_rectangle(
+                int(bullet.x_pos),
+                int(bullet.y_pos),
+                bullet.width,
+                bullet.height,
+                pr.YELLOW,
+            )
 
         pr.end_drawing()
 

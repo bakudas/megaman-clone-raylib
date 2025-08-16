@@ -1,5 +1,6 @@
 # game/logic.py
 from game.player import Player
+from game.bullet import Bullet
 
 
 def apply_physics(player: Player, world_physics: dict) -> None:
@@ -32,6 +33,7 @@ def handle_input(player: Player, input_direction: str, world_physics: dict) -> N
     Atualiza o estado do jogador com base no input
     """
     speed = player.speed
+    player.facing_direction = input_direction
 
     # Movimento horizontal
     if input_direction == "RIGHT":
@@ -45,15 +47,18 @@ def handle_input(player: Player, input_direction: str, world_physics: dict) -> N
             player.y_vel = -player.jump_strength
 
 
-def jump(player_state):
+def shoot(player: Player, bullet_speed: float):
     """
-    Player Jump
+    Cria e retorna uma nova instância de Bullet com base no estado do jogador
     """
-    # Copiamos o estado para não modificar o original diretamente (boa prática)
-    new_state = player_state.copy()
+    # A bala inicialmente vai sair do meio do jogador
+    start_y = player.y_pos + (player.height / 2)
+    start_x = player.x_pos
 
-    # A lógica mais simples para passar no teste
-    new_state["y_vel"] -= new_state["jump_force"]
-    new_state["on_ground"] = False
+    if player.facing_direction == "RIGHT":
+        start_x = player.x_pos + player.width
+        velocity = bullet_speed
+    else:
+        velocity = -bullet_speed
 
-    return new_state
+    return Bullet(start_x, start_y, velocity)
