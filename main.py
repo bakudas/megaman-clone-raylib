@@ -31,43 +31,47 @@ world_physics = {
 }
 # ---------------------------------------------------
 
-# 2. Game Loop Principal
-while not pr.window_should_close():
-    # 3. Update
-    # Lida com os inputs
-    player.x_vel = 0
-    if pr.is_key_down(KEY_RIGHT):
-        handle_input(player, "RIGHT")
-    elif pr.is_key_down(KEY_LEFT):
-        handle_input(player, "LEFT")
+def run_game():
+    # 2. Game Loop Principal
+    while not pr.window_should_close():
+        # 3. Update
+        # Lida com os inputs
+        player.x_vel = 0
+        if pr.is_key_down(KEY_RIGHT):
+            handle_input(player, "RIGHT")
+        elif pr.is_key_down(KEY_LEFT):
+            handle_input(player, "LEFT")
 
-    # Aplica a Física
-    apply_physics(player, world_physics)
+        # Aplica a Física
+        apply_physics(player, world_physics)
 
-    # 4. Draw
-    pr.begin_drawing()
+        # 4. Draw
+        pr.begin_drawing()
 
-    pr.clear_background(pr.DARKGRAY)
+        pr.clear_background(pr.DARKGRAY)
 
-    # Desenha o chão
-    pr.draw_rectangle(
-        0, FLOOR_LEVEL, SCREEN_WIDTH, SCREEN_HEIGHT - FLOOR_LEVEL, pr.GREEN
-    )
+        # Desenha o chão
+        pr.draw_rectangle(
+            0, FLOOR_LEVEL, SCREEN_WIDTH, SCREEN_HEIGHT - FLOOR_LEVEL, pr.GREEN
+        )
 
-    # Texto debug
-    pr.draw_text("Nosso 'Mega Man' caindo!", 200, 20, 20, pr.LIGHTGRAY)
+        # Texto debug
+        pr.draw_text("Nosso 'Mega Man' caindo!", 200, 20, 20, pr.LIGHTGRAY)
 
-    # Desenha o jogador
-    # Usamos os dados do nosso dic 'player_state'
-    pr.draw_rectangle(
-        int(player.x_pos),
-        int(player.y_pos),
-        int(player.width),
-        int(player.height),
-        pr.SKYBLUE,
-    )
+        # Desenha o jogador
+        # Usamos os dados do nosso dic 'player_state'
+        pr.draw_rectangle(
+            int(player.x_pos),
+            int(player.y_pos),
+            int(player.width),
+            int(player.height),
+            pr.SKYBLUE,
+        )
 
-    pr.end_drawing()
+        pr.end_drawing()
 
 # 5. Final
-pr.close_window()
+    pr.close_window()
+
+if __name__ == "__main__":
+    run_game()
