@@ -10,19 +10,27 @@ from game.platforms import Platform
 
 # 1. Inicialização
 # -------------------------------------------------
-SCREEN_WIDTH = 256
-SCREEN_HEIGHT = 224
-FLOOR_LEVEL = 400
+VIRTUAL_SCREEN_WIDTH = 256
+VIRTUAL_SCREEN_HEIGHT = 224
+SCALE_MULTIPLIER = 3
+SCREEN_WIDTH = VIRTUAL_SCREEN_WIDTH * SCALE_MULTIPLIER
+SCREEN_HEIGHT = VIRTUAL_SCREEN_HEIGHT * SCALE_MULTIPLIER
+KILL_Y = 1000
 
 pr.init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Mega Man TDD Curso")
 pr.set_target_fps(60)
 
+# Cria uma tela virtual para renderização do jogo
+target_texture = pr.load_render_texture(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT)
+
 # Inicializar a Camera
 camera = pr.Camera2D()
 camera.target = pr.Vector2(0, 0)  # o ponto que a camera olha
-camera.offset = pr.Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)  # centro da tela
+camera.offset = pr.Vector2(
+    VIRTUAL_SCREEN_WIDTH / 2, VIRTUAL_SCREEN_HEIGHT / 2
+)  # centro da tela
 camera.rotation = 0.0
-camera.zoom = 0.5
+camera.zoom = 1.0
 
 # Cria uma lista de plataformas para definir o nível
 level_platforms = [
@@ -35,19 +43,17 @@ level_platforms = [
 ]
 
 # Estado inicial do jogador
-player = Player(
-    x=SCREEN_WIDTH / 2, y=0, width=8, height=16, speed=2.5, jump_strength=7.5
-)
+player = Player(x=SCREEN_WIDTH / 2, y=0, width=32, height=35, speed=4, jump_strength=8)
 
 # Configuração da física do nosso mundo
 world_physics = {
-    "gravity": 0.75,  # um valor menor funciona melhor para 60 FPS
+    "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
     "platforms": level_platforms,
 }
 
 # Lista para guardar as balas ativas
 bullets = []
-BULLET_SPEED = 8.0
+BULLET_SPEED = 2.0
 # ---------------------------------------------------
 
 
@@ -86,9 +92,9 @@ def run_game():
 
         # Atualizar o alvo da camera
         # o alvo inicial é um pocuo a frente do jogador
-        look_ahead = 5 * (1 if player.facing_direction == "RIGHT" else -1)
+        look_ahead = 2.5 * (1 if player.facing_direction == "RIGHT" else -1)
         target_x = player.x_pos + (player.width / 2) * look_ahead
-        target_y = player.y_pos + (player.height / 2) - 100  # olhar um pocuo para cima
+        target_y = player.y_pos + (player.height / 2) - 16  # olhar um pocuo para cima
 
         # Suavizar o movimento da camera usando interpolação linear 'lerp'
         # a camera se move 5% da distância até o alvo a cada frame
@@ -97,7 +103,10 @@ def run_game():
         camera.target.y += (target_y - camera.target.y) * smoothing_factor
 
         # 4. Draw
-        pr.begin_drawing()
+        # Começa a desenhar a tela virtual
+        pr.begin_texture_mode(target_texture)
+
+        # limpa a tela
         pr.clear_background(pr.DARKGRAY)
 
         # inicia o modo de camera 2D
@@ -139,7 +148,7 @@ def run_game():
             """,
             50,
             50,
-            20,
+            9,
             pr.LIGHTGRAY,
         )
 
@@ -148,8 +157,41 @@ def run_game():
 
         # UI
         # Texto debug
-        pr.draw_text("Just another Megaman clone...", 50, 50, 24, pr.LIGHTGRAY)
+        pr.draw_text("Just another Megaman clone...", 50, 50, 10, pr.LIGHTGRAY)
 
+        # terminar o desenho na tela virtual
+        pr.end_texture_mode()
+
+        # Começa o desenho na tela real
+        pr.begin_drawing()
+
+        pr.clear_background(
+            pr.RAYWHITE
+        )  # Limpa a janela real (fundo das "letterboxes")
+
+        # Definimos a origem, o tamanho de origem e o tamanho de destino para escalar
+        source_rec = pr.Rectangle(
+            0, 0, target_texture.texture.width, -target_texture.texture.height
+        )
+        dest_rec = pr.Rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+
+        """
+        *Nota sobre height negativo: 
+        Isso é um truque necessário porque as texturas em OpenGL 
+        (que o Raylib usa) têm a coordenada Y (vertical) invertida 
+        em relação a como o Raylib desenha. 
+        Usar um valor negativo para a altura na origem corrige isso.
+        """
+        pr.draw_texture_pro(
+            target_texture.texture,  # tela virtual
+            source_rec,  # a área de origem (a textura inteira, com Y invertido*)
+            dest_rec,  # a área de destino (a janela inteira)
+            pr.Vector2(0, 0),  # origem da rotação
+            0.0,  # rotação
+            pr.WHITE,  # cor/tinta
+        )
+
+        # finaliza o desenho na tela real
         pr.end_drawing()
 
     # 5. Final
