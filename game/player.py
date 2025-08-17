@@ -1,9 +1,6 @@
 # game/player.py
 
 
-from game import platforms
-
-
 class Player:
     def __init__(self, x, y, width=0, height=0, speed=0, jump_strength=0) -> None:
         self.x_pos: float = x
@@ -15,6 +12,8 @@ class Player:
         self.speed: float = speed
         self.jump_strength: float = jump_strength
         self.facing_direction: str = "RIGHT"
+        self.is_wall_sliding: bool = False
+        self.wall_slide_gravity: float = 0.1
 
     @property
     def bottom(self) -> float:

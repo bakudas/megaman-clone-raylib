@@ -30,19 +30,20 @@ camera = Camera(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT)
 # Cria uma lista de plataformas para definir o nível
 level_platforms = [
     # Chão
-    Platform(0, 224, SCREEN_WIDTH, 16, "solid"),
-    # Plataformas no ar
-    Platform(128, 96, 64, 16, "solid"),
-    Platform(256, 128, 96, 16, "pass-through"),
-    Platform(468, 156, 64, 16, "solid"),
+    Platform(0, 400, 100, 50, 'solid'),
+    Platform(156, 400, 100, 50, 'solid'),
+    # Paredes do poço
+    Platform(80, 0, 20, 400, 'solid'),
+    Platform(156, 0, 20, 400, 'solid'),
 ]
 
 # Estado inicial do jogador
-player = Player(x=SCREEN_WIDTH / 2, y=0, width=32, height=35, speed=4, jump_strength=8)
+player = Player(x=VIRTUAL_SCREEN_WIDTH / 2, y=0, width=32, height=35, speed=4, jump_strength=8)
 
 # Configuração da física do nosso mundo
 world_physics = {
     "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
+    "wall_slide_gravity": 0.1,
     "platforms": level_platforms,
 }
 

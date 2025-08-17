@@ -1,7 +1,12 @@
 # tests/test_logic.py
 import pytest
 
-from game.logic import apply_physics, handle_input, shoot
+from game.logic import (
+    apply_horizontal_physics,
+    apply_vertical_physics,
+    handle_input,
+    shoot,
+)
 from game.platforms import Platform
 from game.player import Player
 
@@ -34,7 +39,7 @@ def test_gravity_increase_vertical_velocity(new_player, world_state):
     # 2. Act (agir)
     # A 'física' do jogo acontece aqui
     # A velocidade vertical deve ser afetada pela gravida
-    apply_physics(new_player, world_state)
+    apply_vertical_physics(new_player, world_state)
 
     # 3. Assert (Verificar)
     # Verificamos se a velocidade vertical é maior que zero
@@ -51,7 +56,8 @@ def test_velocity_updates_position(new_player, world_state):
 
     # 2. Act
     # (When) Quando a física é aplicada
-    apply_physics(new_player, world_state)
+    apply_vertical_physics(new_player, world_state)
+    apply_horizontal_physics(new_player, world_state)
 
     # 3. Assert
     # (Then) Então o jogador dever ser mover de acordo com as velocidades em x (x_vel) e y (y_vel)
@@ -190,7 +196,7 @@ def test_player_lands_on_solid_platform(new_player, world_state):
 
     # 2. Act
     # (When) Quando a física é aplicada
-    apply_physics(new_player, world_state)
+    apply_vertical_physics(new_player, world_state)
 
     # 3. Assert
     # (Then) Então o jogador de parar exatamente em cima da plataforma
@@ -210,7 +216,7 @@ def test_player_jumps_through_passthrough_platform(new_player, world_state):
 
     # 2. Act
     # (When) Quando a física é aplicada
-    apply_physics(new_player, world_state)
+    apply_vertical_physics(new_player, world_state)
 
     # 3. Assert
     # (Then) Então o jogador NÃO deve colidir e deve continuar subindo (afetado pela gravidade)
@@ -230,7 +236,7 @@ def test_player_lands_on_passthrough_platform(new_player, world_state):
 
     # 2. Act
     # (When) Quando a física é aplicada
-    apply_physics(new_player, world_state)
+    apply_vertical_physics(new_player, world_state)
 
     # 3. Assert
     # (Then) Então o jogador deve parar em cima da plataforma
@@ -250,9 +256,69 @@ def test_player_collides_with_bottom_of_solid_platform(new_player, world_state):
 
     # 2. Act
     # (When) Quando a física é aplicada
-    apply_physics(new_player, world_state)
+    apply_vertical_physics(new_player, world_state)
 
     # 3. Assert
     # (Then) Então o jogador deve parar no fundo da plataforma e sua velocidade de subida de ser zero
     assert new_player.y_pos == 270  # 250 (player.x_pos) + 20 (altura plataforma)
     assert new_player.y_vel == 0
+
+
+def test_player_starts_wall_sliding_when_touching_wall_in_air(new_player, world_state):
+    # 1. Arrange
+    # (Given) Dado um jogador no, se movendo em direção a uma parede sólida
+    new_player.x_pos = 145
+    new_player.y_pos = 100
+    new_player.width = 40
+    new_player.height = 50
+    new_player.x_vel = 5  # movendo para a direita
+    new_player.y_vel = 5  # movendo para baixo
+    world_state["platforms"][0].x = 180
+    world_state["platforms"][0].y = 80
+    world_state["platforms"][0].width = 20
+    world_state["platforms"][0].height = 100
+    world_state["platforms"][0].p_type = "solid"
+
+    # 2. Act
+    # (When) Quando a física horizontal é aplicada
+    apply_horizontal_physics(new_player, world_state)
+    apply_vertical_physics(new_player, world_state)
+
+    # 3. Assert
+    # (Then) O jogador deveria parar de se mover horizontalmente e entrar no estado de wall slide
+    assert new_player.is_wall_sliding is True
+    assert new_player.x_pos == 140
+    assert new_player.x_vel == 0
+
+
+def test_wall_sliding_reduces_gravity_effect():
+    # Given um jogador deslizando na parede
+    player = Player(x=140, y=100, width=40, height=50, speed=5, jump_strength=15)
+    player.is_wall_sliding = True
+    world_state = {
+        "gravity": 1.0,
+        "wall_slide_gravity": 0.2,
+        "platforms": [],
+    }  # Gravidade de slide especial
+
+    # When a física vertical é aplicada
+    apply_vertical_physics(player, world_state)
+
+    # Then a velocidade de queda deve ser a da gravidade de slide, não a normal
+    assert player.y_vel == 0.2
+
+
+def test_wall_jump_propels_player_up_and_away():
+    # Given um jogador deslizando na parede direita
+    player = Player(x=140, y=100, width=40, height=50, speed=5, jump_strength=15)
+    player.is_wall_sliding = True
+    player.facing_direction = (
+        "RIGHT"  # A direção importa para saber de qual parede pular
+    )
+
+    # When o input de pulo é processado
+    handle_input(player, "JUMP", {})  # world_state não é necessário aqui
+
+    # Then o jogador deve ter velocidade para cima e para a esquerda (longe da parede)
+    assert player.y_vel < 0  # Subindo
+    assert player.x_vel < 0  # Longe da parede
