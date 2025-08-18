@@ -1,9 +1,7 @@
 # main.py
-
 import pyray as pr
-from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X
+from raylib.defines import GLFW_KEY_R
 
-from game.logic import shoot
 from game.player import Player
 from game.bullet import Bullet
 from game.platforms import Platform
@@ -32,16 +30,21 @@ camera = Camera(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT)
 # Cria uma lista de plataformas para definir o nível
 level_platforms = [
     # Chão
-    Platform(0, 400, 100, 50, "solid"),
-    Platform(156, 400, 100, 50, "solid"),
+    Platform(0, 400, 300, 50, "solid"),
+    Platform(356, 400, 300, 50, "solid"),
     # Paredes do poço
-    Platform(80, 0, 20, 400, "solid"),
-    Platform(156, 0, 20, 400, "solid"),
+    Platform(280, 0, 20, 400, "solid"),
+    Platform(356, 0, 20, 400, "solid"),
 ]
 
 # Estado inicial do jogador
 player = Player(
-    x=VIRTUAL_SCREEN_WIDTH / 2 + 50, y=0, width=32, height=35, speed=4, jump_strength=8
+    x=VIRTUAL_SCREEN_WIDTH / 2 + 50,
+    y=0,
+    width=32,
+    height=35,
+    speed=4,
+    jump_strength=8
 )
 
 # Configuração da física do nosso mundo
@@ -49,13 +52,27 @@ world_state = {
     "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
     "wall_slide_gravity": 0.1,
     "platforms": level_platforms,
+    "bullets": []
 }
 
-# Lista para guardar as balas ativas
-bullets = []
-BULLET_SPEED = 5.0
 # ---------------------------------------------------
 
+def reset_game():
+    global world_state, player
+    player = Player(
+        x=VIRTUAL_SCREEN_WIDTH / 2 + 50,
+        y=0,
+        width=32,
+        height=35,
+        speed=4,
+        jump_strength=8
+    )
+    world_state = {
+        "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
+        "wall_slide_gravity": 0.1,
+        "platforms": level_platforms,
+        "bullets": []
+    }
 
 def run_game():
     global bullets
@@ -63,43 +80,30 @@ def run_game():
     # 2. Game Loop Principal
     while not pr.window_should_close():
         # 3. Update
-        # Lida com os inputs
-        player.x_vel = 0  # Reseta a intenção de movimento
-        horizontal_input = "STOP"
+        delta_time = pr.get_frame_time()
 
-        if pr.is_key_down(KEY_RIGHT):
-            player.handle_input("RIGHT")
-            horizontal_input = "RIGHT"
-        if pr.is_key_down(KEY_LEFT):
-            player.handle_input("LEFT")
-            horizontal_input = "LEFT"
-        if pr.is_key_pressed(GLFW_KEY_SPACE):
-            player.handle_input("JUMP")
+        # inputs
+        if pr.is_key_pressed(GLFW_KEY_R):
+            print("reset")
+            reset_game()
 
-        # O estado Walking precisa saber quando parar
-        if horizontal_input == "STOP":
-            player.handle_input("STOP")
+        # atualiza a lógica do player
+        player.update(world_state, delta_time)
 
-        # player lida com a própria atualização
-        player.update(world_state)
-
-        # Lógica do tiro
-        if pr.is_key_pressed(GLFW_KEY_X):
-            new_bullet = shoot(player, BULLET_SPEED)
-            bullets.append(new_bullet)
-
-        # Atualizar as balas
-        for bullet in bullets:
+        # atualiza as balas
+        for bullet in world_state["bullets"]:
             bullet.update()
 
-        # Remover baloas fora da tela
-        # List comprehension para criar uma nova lista apenas com as balas visíveis
-        bullets = [b for b in bullets if 0 < b.x_pos < SCREEN_WIDTH]
+        # Remover balas fora da tela
+        # List comprehension para criar uma lista apenas com as balas visíveis
+        world_state['bullets'] = [b for b in world_state['bullets'] if -400 < b.x_pos < 1200]
 
         # Atualizar a camera
         camera.update(player)
 
         # 4. Draw
+        pr.draw_fps(10, 10)
+
         # Começa a desenhar a tela virtual
         pr.begin_texture_mode(target_texture)
 
@@ -112,50 +116,49 @@ def run_game():
         # Desenha as plataformas
         for plat in world_state["platforms"]:
             color = pr.GRAY if plat.type == "solid" else pr.LIGHTGRAY
-            pr.draw_rectangle(plat.x, plat.y, plat.width, plat.height, color)
+            pr.draw_rectangle(
+                int(plat.x),
+                int(plat.y),
+                int(plat.width),
+                int(plat.height),
+                color
+            )
 
         # Desenha o jogador
         # Usamos os dados do nosso dic 'player_state'
-        pr.draw_rectangle(
-            int(player.x_pos),
-            int(player.y_pos),
-            int(player.width),
-            int(player.height),
-            pr.SKYBLUE,
-        )
+        player.draw()
 
         # Desenha as balas
-        for bullet in bullets:
+        for bullet in world_state['bullets']:
             pr.draw_rectangle(
                 int(bullet.x_pos),
                 int(bullet.y_pos),
-                bullet.width,
-                bullet.height,
+                int(bullet.width),
+                int(bullet.height),
                 pr.YELLOW,
             )
-
-        pr.draw_text(
-            f"""
-            player starts:
-            x: {player.x_pos}
-            y: {player.y_pos}
-            x_vel: {player.x_vel}
-            y_vel: {player.y_vel}
-            is_grounded: {player.is_on_ground(world_state)}
-            state: {player.state}
-            """,
-            0,
-            50,
-            9,
-            pr.LIGHTGRAY,
-        )
 
         # termina o modo de camera 2D
         camera.end_mode()
 
         # UI
         # Texto debug
-        pr.draw_text("Just another Megaman clone...", 10, 10, 10, pr.LIGHTGRAY)
+        # pr.draw_text("Just another Megaman clone...", 10, 10, 10, pr.LIGHTGRAY)
+        # pr.draw_text(
+        #     f"""
+        #     player starts:
+        #     x: {player.x_pos}
+        #     y: {player.y_pos}
+        #     x_vel: {player.x_vel}
+        #     y_vel: {player.y_vel}
+        #     is_grounded: {player.is_on_ground(world_state)}
+        #     state: {player.state}
+        #     """,
+        #     10,
+        #     10,
+        #     9,
+        #     pr.LIGHTGRAY,
+        # )
 
         # terminar o desenho na tela virtual
         pr.end_texture_mode()
