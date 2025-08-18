@@ -1,5 +1,6 @@
 # tests/test_player.py
 
+from game import player
 import pytest
 from game.player import Player
 
