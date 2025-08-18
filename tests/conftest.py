@@ -8,11 +8,11 @@ from game.platforms import Platform
 @pytest.fixture
 def player():
     """Retorna uma instância padrão do Player para os testes."""
-    return Player(x=100, y=100, width=40, height=50, speed=4, jump_strength=12)
+    return Player(x=100, y=100, width=40, height=50, speed=5, jump_strength=15)
 
 
 @pytest.fixture
-def world_with_platforms():
+def world_state():
     """Retorna um dicionário de estado de mundo com algumas plataformas."""
     return {
         "gravity": 1.0,
