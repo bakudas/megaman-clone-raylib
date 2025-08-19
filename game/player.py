@@ -43,7 +43,7 @@ class Player:
         # WALL SLIDE
         self.is_wall_sliding: bool = False
         self.wall_slide_gravity: float = 0.25
-        self.wall_jump_x_velocity: float = 5
+        self.wall_jump_x_velocity: float = self.jump_strength * 0.20
         self.wall_jump_scale_factor: float = 0.8
 
         # DASH
@@ -62,7 +62,7 @@ class Player:
         previous_state: PlayerState = self.locomotion_state
 
         # debug
-        print(f"Movement state: {previous_state} -> {new_state}")
+        #print(f"Movement state: {previous_state} -> {new_state}")
 
         # troca o estado
         self.locomotion_state = new_state
@@ -73,7 +73,7 @@ class Player:
         previous_state: WeaponState = self.weapon_state
 
         # debug
-        print(f"Weapon state: {previous_state} -> {new_state}")
+        #print(f"Weapon state: {previous_state} -> {new_state}")
 
         # troca o estado da arma
         self.weapon_state = new_state
@@ -178,7 +178,7 @@ class Player:
         new_bullet = Bullet(start_x, start_y, velocity, 'charged')
         world_state["bullets"].append(new_bullet)
 
-    # --- Métodos de verificação
+    # --- Métodos de verificação ---
 
     @property
     def bottom(self) -> float:
@@ -229,9 +229,6 @@ class Player:
         # Armazena a posição anterior para checagem de colisão
         previous_y_pos = self.y_pos
 
-        # Copiamos o estado para não modificar o original diretamente (boa prática)
-        gravity = world_state["gravity"]
-
         # Aplica a velocidade vertical
         self.y_pos += self.y_vel
 
@@ -242,10 +239,6 @@ class Player:
         for plat in world_state.get("platforms", []):
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
 
-            # Condições para aterrissar:
-            # 1) os retângulos colidem
-            # 2) o jogador está caido (ou parado)
-            # 3) a base do jogador estava ACIMA do topo da plataforma no frame anterior
             is_colliding = pr.check_collision_recs(player_rect, plat_rect)
             is_falling = self.y_vel >= 0
             is_rising = self.y_vel < 0
@@ -255,27 +248,24 @@ class Player:
             if is_colliding:
                 # CASO 1: ATERRISSANDO NA PLATAFORMA
                 if is_falling and was_above:
-                    # Para plataformas 'pass-through', a condição de queda é obrigatória
-                    # Para 'solid', aterrissar é o comportamento padrão
                     if plat.type == "solid" or plat.type == "pass-through":
-                        self.y_pos = plat.y - self.height  # corrige a posição do player
-                        self.y_vel = 0  # parada súbita pela colição
+                        self.y_pos = plat.y - self.height
+                        self.y_vel = 0
                         collision_occurred = True
                         break
                 # CASO 2: BATENDO A CABEÇA NO FUNDO DA PLATAFORMA
                 if plat.type == "solid" and is_rising and was_bellow:
-                    self.y_pos = plat.y + plat.height  # corrige a posição do player
+                    self.y_pos = plat.y + plat.height
                     self.y_vel = 0
                     collision_occurred = True
                     break
 
         # Aplica gravidade se não estivermos no chão de uma plataforma
         if not collision_occurred:
-            if self.is_touching_wall_in_air(world_state) and self.horizontal_input_active:
+            if self.is_wall_sliding and self.horizontal_input_active:
                 # Aplica uma gravidade reduzida e limita a velocidade de queda
-                gravity = self.wall_slide_gravity
-                self.y_vel += gravity
-                if self.y_vel > 2:  # Limite de velocidade de slide
+                self.y_vel += self.wall_slide_gravity
+                if self.y_vel > 2:
                     self.y_vel = 2
             else:
                 self.y_vel += world_state["gravity"]
@@ -284,32 +274,26 @@ class Player:
         # Aplica movimento horizontal
         self.x_pos += self.x_vel
 
-        # Reseta o estado do wall slide a cada frame
-        self.is_wall_sliding = False
-
-        # Checa colisão com plataformas
         player_rect = pr.Rectangle(self.x_pos, self.y_pos, self.width, self.height)
+        is_colliding_with_wall = False
 
         for plat in world_state.get("platforms", []):
             if plat.type == "solid":
                 plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
-
-                is_colliding = pr.check_collision_recs(player_rect, plat_rect)
-                collision_from_left = self.x_vel > 0
-                collistion_from_right = self.x_vel < 0
-
-                if is_colliding:
-                    # colisão pela esquerda (o jogador vem da esquerda)
-                    if collision_from_left:
+                if pr.check_collision_recs(player_rect, plat_rect):
+                    is_colliding_with_wall = True
+                    # Corrige a posição baseado na direção do movimento original
+                    if self.x_vel > 0:  # Movendo para a direita
                         self.x_pos = plat.x - self.width
-                        if self.y_vel > 0:  # só pode deslizar se estiver caindo
-                            self.is_wall_sliding = True
-                            #self.facing_direction = 'RIGHT'
-                            break
-                    # colisão pela direita (o jogador vem da direita)
-                    elif collistion_from_right:
+                        self.x_vel = 0
+                    elif self.x_vel < 0:  # Movendo para a esquerda
                         self.x_pos = plat.x + plat.width
-                        if self.y_vel > 0:  # só pode deslizer se estiver caindo
-                            self.is_wall_sliding = True
-                            #self.facing_direction = 'LEFT'
-                            break
+                        self.x_vel = 0
+                    # Se x_vel é 0, a posição já foi corrigida no frame anterior.
+                    break  # Para após a primeira colisão
+
+        # Atualiza o estado de wall slide baseado na colisão
+        if is_colliding_with_wall and self.y_vel > 0 and not self.is_on_ground(world_state):
+            self.is_wall_sliding = True
+        else:
+            self.is_wall_sliding = False

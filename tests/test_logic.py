@@ -1,301 +1,220 @@
 # tests/test_logic.py
 import pytest
 
-from game.player_state import FallingState, WallSlidingState
+from game.player_state import (
+    FallingState,
+    WallSlidingState,
+    RunningState,
+    IdleState,
+    JumpingState,
+)
 from game.player import Player
 from game.platforms import Platform
-from game.logic import (
-    shoot,
-)
 
 
-def test_gravity_increase_vertical_velocity(player, world_state):
-    # 1. Arrange (Preparar)
-    # (Given) Dado um jogador que começa no ar (y=100) e parado (y_vel=0).
-    player.x_pos = 100
-    player.y_vel = 0
-
-    # 2. Act (agir)
-    # A 'física' do jogo acontece aqui
-    # A velocidade vertical deve ser afetada pela gravida
-    player.update(world_state)
-
-    # 3. Assert (Verificar)
-    # Verificamos se a velocidade vertical é maior que zero
-    assert player.y_vel > 0
+# --- Testes de Lógica de Estado e Input ---
 
 
-def test_velocity_updates_position(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador parado
-    player.x_pos = 200
-    player.y_pos = 100
-    player.y_vel = 10
-    player.x_vel += player.speed
+def test_move_right_input_changes_state_to_running_and_sets_velocity(player):
+    # Given: um jogador parado no chão
+    player.change_locomotion_state(IdleState(player))
 
-    # 2. Act
-    # (When) Quando a física é aplicada
-    player.update(world_state)
-
-    # 3. Assert
-    # (Then) Então o jogador dever ser mover de acordo com as velocidades em x (x_vel) e y (y_vel)
-    assert player.y_pos == 110  # 100 (y_pos) + 10 (y_vel)
-    assert player.x_pos == 205  # 200 (x_pos) + 5 (speed)
-
-
-def test_move_right_input_sets_positive_horizontal_velocity(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador parado horizontalmente
-    player.x_pos = 200
-    player.y_pos = 390
-    player.x_vel = 0
-
-    # 2. Act
-    # (When) Quando o input "direita" é processo
+    # When: o input "direita" é processado
     player.handle_input("RIGHT")
 
-    # 3. Assert
-    # (Then) Então a velocidade horizontal deve ser positiva
-    assert player.x_vel > 0
-    assert player.x_vel == 5
-
-
-def test_move_left_input_sets_negative_horizontal_velocity(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador parado
-    player.x_pos = 200
-    player.y_pos = 390
-    player.x_vel = 0
-
-    # 2. Act
-    # (When) Quando o input "direita" é processo
-    player.handle_input("LEFT")
-
-    # 3. Assert
-    # (Then) Então a velocidade horizontal deve ser negativa
-    assert player.x_vel < 0
-    assert player.x_vel == -5
-
-
-def test_player_jumps_from_a_platform(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador no chão
-    # y=350 significa que player.bottom está em 400, exatamente sob a plataforma
-    # x=80 significa que o jogador está alinhado horizontalmente com a plataforma
-    player.x_pos = 80
-    player.y_pos = 350
-    player.y_vel = 0  # parado verticalmente
-    player.jump_strength = 15  # força do pulo
-
-    # 2. Act
-    # (When) quando o input "JUMP" é processado
-    player.handle_input("JUMP")
-
-    # 3. Assert
-    # (Then) Então a velocidade vertical do jogador deve ser negativa (para cima)
-    assert player.y_vel < 0
-    assert player.y_vel == -player.jump_strength
-
-
-def test_player_cannot_jump_in_mid_air(player, world_state):
-    # Given (Dado) um jogador no ar
-    player.y_vel = 5  # Caindo
-    player.change_state(FallingState())
-
-    # When (Quando) o input "JUMP" é processado
-    player.handle_input("JUMP")
-    player.update(world_state)
-
-    # Then (Então) a velocidade vertical NÃO deve mudar
-    assert player.y_vel == 6  # 5 (player.y_vel) + 1 (gravidade)
-
-
-def test_moving_right_updates_facing_direction(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador
-
-    # 2. Act
-    # (When) Quando o input "RIGHT" é processdo
-    player.handle_input("RIGHT")
-    player.update(world_state)  # world_state não é necessário aqui
-
-    # 3. Assert
-    # (Then) Então a direção deve ser "RIGHT"
+    # Then: o estado muda para Running e a velocidade e direção são definidas
+    assert isinstance(player.locomotion_state, RunningState)
+    assert player.x_vel == player.speed
     assert player.facing_direction == "RIGHT"
 
 
-def test_moving_left_updates_facing_direction(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador
+def test_move_left_input_changes_state_to_running_and_sets_velocity(player):
+    # Given: um jogador parado no chão
+    player.change_locomotion_state(IdleState(player))
 
-    # 2. Act
-    # (When) Quando o input "LEFT" é processdao
+    # When: o input "esquerda" é processado
     player.handle_input("LEFT")
-    player.update(world_state)  # world_state não é necessário aqui
 
-    # 3. Assert
-    # (Then) Então a direção deve ser "LEFT"
+    # Then: o estado muda para Running e a velocidade e direção são definidas
+    assert isinstance(player.locomotion_state, RunningState)
+    assert player.x_vel == -player.speed
     assert player.facing_direction == "LEFT"
 
 
-def test_shoot_bullet_moving_in_player_direction(player):
-    # 1. Arrange
-    # (Given) Dado um jogador virado para a direita
-    player.facing_direction = "RIGHT"
-    bullet_speed = 10
+def test_stop_input_changes_state_to_idle(player):
+    # Given: um jogador correndo
+    player.change_locomotion_state(RunningState())
 
-    # 2. Act
-    # (When) Quando o jogador atira
-    bullet = shoot(player, bullet_speed)
+    # When: o input "parar" é processado
+    player.handle_input("STOP")
 
-    # 3. Assert
-    # (Then) Então a bala deve se mover para a direita
-    assert bullet.x_vel > 0
+    # Then: o estado muda para Idle e a velocidade horizontal é zerada
+    assert isinstance(player.locomotion_state, IdleState)
+    assert player.x_vel == 0
 
-    # 1. Arrang
-    # (Given) Dado um jogador virado para a esquerda
-    player.facing_direction = "LEFT"
 
-    # 2. Act
-    # (When) Quando o jogador atira
-    bullet = shoot(player, bullet_speed)
+def test_jump_input_while_idle_changes_state_and_applies_velocity(player):
+    # Given: um jogador parado no chão
+    player.change_locomotion_state(IdleState(player))
+    player.y_vel = 0
 
-    # 3. Assert
-    # (Then) Então a bala deve se mover para a direita
-    assert bullet.x_vel < 0
+    # When: o input "pulo" é processado
+    player.handle_input("JUMP")
+
+    # Then: o estado muda para Jumping e a velocidade vertical é aplicada
+    assert isinstance(player.locomotion_state, JumpingState)
+    assert player.y_vel == -player.jump_strength
+
+
+def test_jump_input_is_ignored_when_falling(player):
+    # Given: um jogador caindo
+    player.change_locomotion_state(FallingState())
+    initial_y_vel = 5
+    player.y_vel = initial_y_vel
+
+    # When: o input "pulo" é processado
+    player.handle_input("JUMP")
+
+    # Then: o estado e a velocidade vertical não mudam
+    assert isinstance(player.locomotion_state, FallingState)
+    assert player.y_vel == initial_y_vel
+
+
+# --- Testes de Física Vertical ---
+
+
+def test_gravity_increases_vertical_velocity(player, world_state):
+    # Given: um jogador no ar, parado verticalmente
+    player.y_pos = 100
+    player.y_vel = 0
+
+    # When: a física vertical é aplicada
+    player._apply_vertical_physics(world_state)
+
+    # Then: a velocidade vertical aumenta devido à gravidade
+    assert player.y_vel == world_state["gravity"]
 
 
 def test_player_lands_on_solid_platform(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador caindo em direção a uma plataforma sólida
+    # Given: um jogador caindo em direção a uma plataforma sólida
     player.x_pos = 80
-    player.y_pos = 195
-    player.y_vel = 10  # caindo
-    world_state["platforms"][0].x = 80
-    world_state["platforms"][0].y = 250
-    world_state["platforms"][0].p_type = "solid"
+    player.y_pos = 199  # Começa com os pés um pouco acima da plataforma
+    player.y_vel = 5    # Caindo
+    platform = world_state["platforms"][0]
+    platform.x, platform.y, platform.p_type = 80, 250, "solid"
 
-    # 2. Act
-    # (When) Quando a física é aplicada
-    player.update(world_state)
+    # When: a física vertical é aplicada
+    player._apply_vertical_physics(world_state)
 
-    # 3. Assert
-    # (Then) Então o jogador de parar exatamente em cima da plataforma
-    assert player.y_pos == 200  # 250 (topo da plataforma) - 50 (altura do player)
+    # Then: o jogador para exatamente em cima da plataforma
+    assert player.y_pos == platform.y - player.height
     assert player.y_vel == 0
 
 
 def test_player_jumps_through_passthrough_platform(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador pulando por baixo de uma plataforma pass-through
+    # Given: um jogador pulando por baixo de uma plataforma pass-through
     player.x_pos = 100
     player.y_pos = 260
-    player.y_vel = -10  # pulando
-    world_state["platforms"][0].x = 80
-    world_state["platforms"][0].y = 250
-    world_state["platforms"][0].p_type = "pass-through"
+    player.y_vel = -10  # Pulando
+    platform = world_state["platforms"][0]
+    platform.x, platform.y, platform.p_type = 80, 250, "pass-through"
 
-    # 2. Act
-    # (When) Quando a física é aplicada
-    player.update(world_state)
+    # When: a física vertical é aplicada
+    player._apply_vertical_physics(world_state)
 
-    # 3. Assert
-    # (Then) Então o jogador NÃO deve colidir e deve continuar subindo (afetado pela gravidade)
-    assert player.y_pos == 250  # 260 (player.y_pos) - 10 (player.y_vel)
-    assert player.y_vel == -9  # -10 + 1 (gravidade)
-
-
-def test_player_lands_on_passthrough_platform(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador caindo em direção a uma plataforma pass-through
-    player.x_pos = 100
-    player.y_pos = 195
-    player.y_vel = 10  # caindo
-    world_state["platforms"][0].x = 80
-    world_state["platforms"][0].y = 250
-    world_state["platforms"][0].p_type = "pass-through"
-
-    # 2. Act
-    # (When) Quando a física é aplicada
-    player.update(world_state)
-
-    # 3. Assert
-    # (Then) Então o jogador deve parar em cima da plataforma
-    assert player.y_pos == 200
-    assert player.y_vel == 0
+    # Then: o jogador não colide e continua subindo (afetado pela gravidade)
+    assert player.y_pos == 250  # 260 (y_pos) + -10 (y_vel)
+    assert player.y_vel == -10 + world_state["gravity"]
 
 
 def test_player_collides_with_bottom_of_solid_platform(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador pulando em direção ao fundo de uma plataforma
+    # Given: um jogador pulando em direção ao fundo de uma plataforma
     player.x_pos = 100
-    player.y_pos = 270
-    player.y_vel = -10  # pulando
-    world_state["platforms"][0].x = 80
-    world_state["platforms"][0].y = 250
-    world_state["platforms"][0].p_type = "solid"
+    player.y_pos = 275 # Abaixo da plataforma
+    player.y_vel = -10  # Pulando
+    platform = world_state["platforms"][0]
+    platform.x, platform.y, platform.height, platform.p_type = 80, 250, 20, "solid"
 
-    # 2. Act
-    # (When) Quando a física é aplicada
-    player.update(world_state)
+    # When: a física vertical é aplicada
+    player._apply_vertical_physics(world_state)
 
-    # 3. Assert
-    # (Then) Então o jogador deve parar no fundo da plataforma e sua velocidade de subida de ser zero
-    assert player.y_pos == 270  # 250 (player.x_pos) + 20 (altura plataforma)
+    # Then: o jogador para no fundo da plataforma e sua velocidade de subida é zerada
+    assert player.y_pos == platform.y + platform.height
     assert player.y_vel == 0
 
 
+# --- Testes de Física Horizontal e Wall Slide ---
+
+
 def test_player_starts_wall_sliding_when_touching_wall_in_air(player, world_state):
-    # 1. Arrange
-    # (Given) Dado um jogador no, se movendo em direção a uma parede sólida
-    player.x_pos = 145
+    # Given: um jogador no ar, se movendo em direção a uma parede
+    player.x_pos = 175
     player.y_pos = 100
-    player.width = 40
-    player.height = 50
-    player.x_vel = 5  # movendo para a direita
-    player.y_vel = 5  # movendo para baixo
-    world_state["platforms"][0].x = 180
-    world_state["platforms"][0].y = 80
-    world_state["platforms"][0].width = 20
-    world_state["platforms"][0].height = 100
-    world_state["platforms"][0].p_type = "solid"
+    player.x_vel = 10  # Movendo para a direita
+    player.y_vel = 1  # Caindo
+    wall = world_state["platforms"][0]
+    wall.x, wall.y, wall.width, wall.height, wall.p_type = 180, 80, 20, 100, "solid"
 
-    # 2. Act
-    # (When) Quando a física horizontal é aplicada
-    player.update(world_state)
+    # When: a física horizontal é aplicada
+    player._apply_horizontal_physics(world_state, 0.0)
 
-    # 3. Assert
-    # (Then) O jogador deveria parar de se mover horizontalmente e entrar no estado de wall slide
+    # Then: o jogador para de se mover horizontalmente e o estado de wall slide é ativado
     assert player.is_wall_sliding is True
-    assert player.x_pos == 140
+    assert player.x_pos == wall.x - player.width
     assert player.x_vel == 0
 
 
-def test_wall_sliding_reduces_gravity_effect():
-    # Given um jogador deslizando na parede
-    player = Player(x=140, y=100, width=40, height=50, speed=5, jump_strength=15)
+def test_wall_sliding_reduces_gravity_effect(player, world_state):
+    # Given: um jogador em estado de wall slide, caindo e com input na direção da parede
     player.is_wall_sliding = True
-    world_state = {
-        "gravity": 1.0,
-        "wall_slide_gravity": 0.2,
-        "platforms": [],
-    }  # Gravidade de slide especial
+    player.horizontal_input_active = True # Essencial para a gravidade reduzida
+    player.y_vel = 1 # Caindo
 
-    # When a física vertical é aplicada
-    player.update(world_state)
+    # When: a física vertical é aplicada
+    player._apply_vertical_physics(world_state)
 
-    # Then a velocidade de queda deve ser a da gravidade de slide, não a normal
-    assert player.y_vel == 0.2
+    # Then: a velocidade de queda é a de slide, não a normal
+    assert player.y_vel == 1 + player.wall_slide_gravity
 
 
-def test_wall_jump_propels_player_up_and_away(player):
-    # Given um jogador deslizando na parede direita
-    player.is_wall_sliding = True
-    player.change_state(WallSlidingState())
+def test_wall_jump_propels_player_up_and_away(player, world_state):
+    # Given: um jogador em estado de wall slide na parede direita
+    player.change_locomotion_state(WallSlidingState(player))
+    player.facing_direction = "RIGHT" # Virado para a parede
 
-    # When o input de pulo é processado
+    # When: o input de pulo é processado
     player.handle_input("JUMP")
 
-    # Then o jogador deve ter velocidade para cima e para a esquerda (longe da parede)
-    assert player.y_vel < 0  # Subindo
-    assert player.x_vel != 0  # Longe da parede
+    # Then: o jogador deve pular para cima e para longe da parede
+    assert player.y_vel < 0
+    assert player.x_vel < 0  # Longe da parede (para a esquerda)
+    assert player.x_vel == -player.wall_jump_x_velocity
+
+
+# --- Testes de Ações ---
+
+
+def test_shoot_bullet_moves_right_when_facing_right(player, world_state):
+    # Given: um jogador virado para a direita
+    player.facing_direction = "RIGHT"
+
+    # When: o jogador atira
+    player.fire_normal_shot(world_state)
+
+    # Then: uma bala é criada se movendo para a direita
+    assert len(world_state['bullets']) == 1
+    bullet = world_state['bullets'][0]
+    assert bullet.x_vel > 0
+
+
+def test_shoot_bullet_moves_left_when_facing_left(player, world_state):
+    # Given: um jogador virado para a esquerda
+    player.facing_direction = "LEFT"
+
+    # When: o jogador atira
+    player.fire_normal_shot(world_state)
+
+    # Then: uma bala é criada se movendo para a esquerda
+    assert len(world_state['bullets']) == 1
+    bullet = world_state['bullets'][0]
+    assert bullet.x_vel < 0

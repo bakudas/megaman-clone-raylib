@@ -43,16 +43,20 @@ class IdleState(PlayerState):
             if player.dash_cooldown_timer <= 0:
                 player.change_locomotion_state(DashState(player))
         elif input_direction in ["LEFT", "RIGHT"]:
-            player.change_locomotion_state(RunningState())
+            # Ao receber um input de movimento, transiciona para Running
+            # e imediatamente processa o input para definir a velocidade e a direção.
+            new_state = RunningState()
+            player.change_locomotion_state(new_state)
+            new_state.handle_input(player, input_direction)
 
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
-        if player.is_touching_wall_in_air(world_state):
-            player.change_locomotion_state(WallSlidingState(player))
-        elif not player.is_on_ground(world_state):
+        if not player.is_on_ground(world_state):
             if player.y_vel < 0:
                 player.change_locomotion_state(JumpingState())
             elif player.y_vel > 0:
                 player.change_locomotion_state(FallingState())
+            elif player.is_touching_wall_in_air(world_state):
+                player.change_locomotion_state(WallSlidingState(player))
 
 
 class RunningState(PlayerState):

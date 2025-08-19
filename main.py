@@ -6,6 +6,7 @@ from game.player import Player
 from game.bullet import Bullet
 from game.platforms import Platform
 from game.camera import Camera
+from game.enemy import Enemy
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -30,11 +31,14 @@ camera = Camera(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT)
 # Cria uma lista de plataformas para definir o nível
 level_platforms = [
     # Chão
-    Platform(0, 400, 300, 50, "solid"),
-    Platform(356, 400, 300, 50, "solid"),
+    Platform(0, 400, 280, 50, "solid"),
+    Platform(376, 400, 300, 50, "solid"),
     # Paredes do poço
-    Platform(280, 0, 20, 400, "solid"),
-    Platform(356, 0, 20, 400, "solid"),
+    Platform(280, 0, 20, 450, "solid"),
+    Platform(356, 0, 20, 450, "solid"),
+    # Plataforma voadora
+    Platform(96, 300, 150, 32, "solid")
+
 ]
 
 # Estado inicial do jogador
@@ -54,6 +58,11 @@ world_state = {
     "platforms": level_platforms,
     "bullets": []
 }
+
+# Cria os inimigos
+enemies = [
+    Enemy(x= 100, y=300-32)
+]
 
 # ---------------------------------------------------
 
@@ -91,12 +100,16 @@ def run_game():
         player.update(world_state, delta_time)
 
         # atualiza as balas
-        for bullet in world_state["bullets"]:
-            bullet.update()
+        for b in world_state["bullets"]:
+            b.update()
 
         # Remover balas fora da tela
         # List comprehension para criar uma lista apenas com as balas visíveis
         world_state['bullets'] = [b for b in world_state['bullets'] if -400 < b.x_pos < 1200]
+
+        # atualiza os inimigos
+        for e in enemies:
+            e.update(world_state, delta_time)
 
         # Atualizar a camera
         camera.update(player)
@@ -125,8 +138,12 @@ def run_game():
             )
 
         # Desenha o jogador
-        # Usamos os dados do nosso dic 'player_state'
         player.draw()
+
+        # desenha os inimigos
+        for e in enemies:
+            pr.draw_text('enemy patrol', int(e.x_pos - e.width/2), int(e.y_pos - 15), 10, pr.WHITE)
+            e.draw()
 
         # Desenha as balas
         for bullet in world_state['bullets']:
