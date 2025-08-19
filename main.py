@@ -130,13 +130,7 @@ def run_game():
 
         # Desenha as balas
         for bullet in world_state['bullets']:
-            pr.draw_rectangle(
-                int(bullet.x_pos),
-                int(bullet.y_pos),
-                int(bullet.width),
-                int(bullet.height),
-                pr.YELLOW,
-            )
+            bullet.draw()
 
         # termina o modo de camera 2D
         camera.end_mode()

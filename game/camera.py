@@ -14,7 +14,7 @@ class Camera:
         self.camera.rotation = 0.0
         self.camera.zoom = 1.0
 
-        self.smoothing_factor: float = 0.025
+        self.smoothing_factor: float = 0.05
         self.looking_ahead_distance: float = 2.5
         self.vertical_offset: float = -16
 
@@ -39,7 +39,7 @@ class Camera:
         ) * self.smoothing_factor
         self.camera.target.y += (
             target_y - self.camera.target.y
-        ) * self.smoothing_factor
+        ) * 0.1
 
     def begin_mode(self) -> None:
         """

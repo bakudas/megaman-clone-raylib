@@ -5,6 +5,7 @@ from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW
 import pyray as pr
 
 from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState
+from game.weapon_states import WeaponState, ReadyState
 from game.bullet import Bullet
 
 if TYPE_CHECKING:
@@ -24,6 +25,7 @@ class Player:
         # atributos de GAMEPLAY
 
         # SHOOT
+        self.charge_duration: float = 1.0
         self.bullet_speed: float = speed * 2.5
         self.bullet_spawn_point: pr.Vector2 = pr.Vector2(
             self.y_pos + (self.height / 2),
@@ -31,6 +33,7 @@ class Player:
         )
 
         # MOVEMENT
+        self.horizontal_input_active: bool = False
         self.facing_direction: str = "RIGHT"
 
         # JUMP
@@ -39,7 +42,7 @@ class Player:
 
         # WALL SLIDE
         self.is_wall_sliding: bool = False
-        self.wall_slide_gravity: float = 0.1
+        self.wall_slide_gravity: float = 0.25
         self.wall_jump_x_velocity: float = 5
         self.wall_jump_scale_factor: float = 0.8
 
@@ -50,44 +53,61 @@ class Player:
         self.dash_cooldown_timer: float = 0.0
 
         # state machine
-        self.state: PlayerState = IdleState(self)
+        self.locomotion_state: PlayerState = IdleState(self)
+        self.weapon_state: WeaponState = ReadyState()
 
-    def change_state(self, new_state: PlayerState):
+    # --- Métodos de gerenciamento de estado ---
+    def change_locomotion_state(self, new_state: PlayerState):
         # guarda o estado anterior
-        previous_state: PlayerState = self.state
+        previous_state: PlayerState = self.locomotion_state
 
         # debug
-        #print(f"mudando do estado {previous_state} para {new_state}")
+        print(f"Movement state: {previous_state} -> {new_state}")
 
         # troca o estado
-        self.state = new_state
+        self.locomotion_state = new_state
+
+    def change_weapon_state(self, new_state: WeaponState):
+        """Muda o estado da arma do jogador."""
+        # guarda o estado anterior
+        previous_state: WeaponState = self.weapon_state
+
+        # debug
+        print(f"Weapon state: {previous_state} -> {new_state}")
+
+        # troca o estado da arma
+        self.weapon_state = new_state
+
+    # --- Métodos principais ---
 
     def update(self, world_state: dict, delta_time: float):
         """
         Atualiza toda a lógica do player
         """
         # self.x_vel = 0 # Reseta a intenção de movimento
-        horizontal_input_active = False
+        self.horizontal_input_active = False
 
         if pr.is_key_down(KEY_RIGHT):
             self.handle_input("RIGHT")
-            horizontal_input_active = True
+            self.horizontal_input_active = True
         elif pr.is_key_down(KEY_LEFT):
             self.handle_input("LEFT")
-            horizontal_input_active = True
+            self.horizontal_input_active = True
 
         if pr.is_key_pressed(GLFW_KEY_SPACE):
             self.handle_input("JUMP")
 
         if pr.is_key_pressed(GLFW_KEY_Z):
             self.handle_input("DASH")
-            horizontal_input_active = True
+            self.horizontal_input_active = True
 
-        if pr.is_key_pressed(GLFW_KEY_X) and not isinstance(self.state, DashState):
-            new_bullet = self.shoot()
-            world_state["bullets"].append(new_bullet)
+        if pr.is_key_pressed(GLFW_KEY_X):
+            self.weapon_state.handle_input(self,"SHOOT_PRESS", world_state)
 
-        if not horizontal_input_active:
+        if pr.is_key_released(GLFW_KEY_X):
+            self.weapon_state.handle_input(self, "SHOOT_RELEASE", world_state)
+
+        if not self.horizontal_input_active:
             self.handle_input("STOP")
 
         # atualiza o cooldown do dash
@@ -99,13 +119,14 @@ class Player:
         self._apply_horizontal_physics(world_state, delta_time)
 
         # atualiza a state machine
-        self.state.update(self, world_state, delta_time)
+        self.locomotion_state.update(self, world_state, delta_time)
+        self.weapon_state.update(self, delta_time, world_state)
 
     def handle_input(self, input_direction: str):
         """
         Delega o input para o estado atual
         """
-        self.state.handle_input(self, input_direction)
+        self.locomotion_state.handle_input(self, input_direction)
 
     def draw(self) -> None:
         pr.draw_rectangle(
@@ -129,24 +150,33 @@ class Player:
             else self.wall_jump_x_velocity
         )
 
-    def shoot(self) -> Bullet | None:
-        """
-        Cria e retorna uma nova instância de Bullet.
-        Retorna None se a ação não for permitida.
-        """
-        bullet_speed = self.bullet_speed
-
-        # A lógica de criação da bala que estava em logic.py
-        start_y = self.y_pos + (self.height / 2) - 2  # Ajuste fino da altura
+    def fire_normal_shot(self, world_state: dict):
+        """Cria e adiciona um projétil normal ao mundo."""
+        start_y = self.y_pos + (self.height / 2) - 2
+        velocity = world_state.get("bullet_speed", 6.0)
 
         if self.facing_direction == 'RIGHT':
             start_x = self.x_pos + self.width
-            velocity = bullet_speed
-        else:  # facing 'LEFT'
+        else:  # LEFT
             start_x = self.x_pos
-            velocity = -bullet_speed
+            velocity = -velocity
 
-        return Bullet(start_x, start_y, velocity)
+        new_bullet = Bullet(start_x, start_y, velocity, 'normal')
+        world_state["bullets"].append(new_bullet)
+
+    def fire_charged_shot(self, world_state: dict):
+        """Cria e adiciona um projétil carregado ao mundo."""
+        start_y = self.y_pos + (self.height / 2) - 6
+        velocity = world_state.get("bullet_speed", 6.0) * 1.2  # Um pouco mais rápido
+
+        if self.facing_direction == 'RIGHT':
+            start_x = self.x_pos + self.width
+        else:  # LEFT
+            start_x = self.x_pos
+            velocity = -velocity
+
+        new_bullet = Bullet(start_x, start_y, velocity, 'charged')
+        world_state["bullets"].append(new_bullet)
 
     # --- Métodos de verificação
 
@@ -194,8 +224,7 @@ class Player:
     def _apply_vertical_physics(self, world_state: dict) -> None:
         """
         Aplica as forças de física (por enquanto, só gravidade) ao estado do jogador.
-        :param player_state: player state.
-        :param world_physics: world general physics.
+        :param world_state: world general physics.
         """
         # Armazena a posição anterior para checagem de colisão
         previous_y_pos = self.y_pos
@@ -242,9 +271,9 @@ class Player:
 
         # Aplica gravidade se não estivermos no chão de uma plataforma
         if not collision_occurred:
-            if self.is_wall_sliding:
+            if self.is_touching_wall_in_air(world_state) and self.horizontal_input_active:
                 # Aplica uma gravidade reduzida e limita a velocidade de queda
-                gravity = world_state.get("wall_slide_gravity", self.y_vel)
+                gravity = self.wall_slide_gravity
                 self.y_vel += gravity
                 if self.y_vel > 2:  # Limite de velocidade de slide
                     self.y_vel = 2
@@ -275,8 +304,12 @@ class Player:
                         self.x_pos = plat.x - self.width
                         if self.y_vel > 0:  # só pode deslizar se estiver caindo
                             self.is_wall_sliding = True
+                            #self.facing_direction = 'RIGHT'
+                            break
                     # colisão pela direita (o jogador vem da direita)
                     elif collistion_from_right:
                         self.x_pos = plat.x + plat.width
                         if self.y_vel > 0:  # só pode deslizer se estiver caindo
                             self.is_wall_sliding = True
+                            #self.facing_direction = 'LEFT'
+                            break
