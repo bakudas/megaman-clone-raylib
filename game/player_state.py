@@ -148,7 +148,6 @@ class DashState(PlayerState):
             else -player.dash_speed
         )
 
-
     def handle_input(self, player: Player, input_direction: str) -> None:
         if input_direction == "JUMP":
             player.jump()
@@ -170,3 +169,29 @@ class DashState(PlayerState):
             player.color = pr.SKYBLUE
             player.change_locomotion_state(IdleState(player))
             player.dash_cooldown_timer = player.dash_cooldown  # inicia o cooldown
+
+class HurtingState(PlayerState):
+    def __init__(self, player: Player):
+        self.invincibility_timer = 1.0
+        self.flash_timer = 0.0
+        self.flash_interval = 0.1
+        player.is_visible = False
+
+        # empurra o player para trás (knockback)
+        player.y_vel = -player.jump_strength * 0.4
+        player.x_vel = -player.knockback_force if player.facing_direction == 'RIGHT' else player.knockback_force
+
+    def handle_input(self, player: Player, input_direction: str) -> None:
+        pass
+
+    def update(self, player: Player, world_state: dict, delta_time: float) -> None:
+        self.invincibility_timer -= delta_time
+        self.flash_timer -= delta_time
+
+        if self.flash_timer <=0:
+            self.flash_timer = self.flash_interval
+            player.is_visible = not player.is_visible
+
+        if self.invincibility_timer <= 0:
+            player.is_visible = True
+            player.change_locomotion_state(FallingState())

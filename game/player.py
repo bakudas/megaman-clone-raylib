@@ -1,10 +1,12 @@
 # game/self.py
 from __future__ import annotations
+
+from math import trunc
 from typing import TYPE_CHECKING
 from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z
 import pyray as pr
 
-from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState
+from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState
 from game.weapon_states import WeaponState, ReadyState
 from game.bullet import Bullet
 
@@ -23,6 +25,11 @@ class Player:
         self.color = pr.SKYBLUE
 
         # atributos de GAMEPLAY
+        self.max_health: int = 28
+        self.health: int = self.max_health
+        self.knockback_force: float = 2
+        self.is_destroyed: bool = False
+        self.is_visible = True
 
         # SHOOT
         self.charge_duration: float = 1.0
@@ -129,13 +136,14 @@ class Player:
         self.locomotion_state.handle_input(self, input_direction)
 
     def draw(self) -> None:
-        pr.draw_rectangle(
-            int(self.x_pos),
-            int(self.y_pos),
-            int(self.width),
-            int(self.height),
-            self.color,
-        )
+        if self.is_visible:
+            pr.draw_rectangle(
+                int(self.x_pos),
+                int(self.y_pos),
+                int(self.width),
+                int(self.height),
+                self.color,
+            )
 
     # --- Métodos de Ação ---
 
@@ -177,6 +185,21 @@ class Player:
 
         new_bullet = Bullet(start_x, start_y, velocity, 'charged')
         world_state["bullets"].append(new_bullet)
+
+    def take_damage(self, amount: int):
+        # invencibilidade temporária, checa se já está tomando dado
+        if isinstance(self.locomotion_state, HurtingState):
+            return
+
+        self.health -= amount
+        print(f'Player took: {amount} damage, {self.health} left')
+        if self.health <= 0:
+            self.height = 0
+            self.is_destroyed = True
+            print('player has been destroyed!')
+        else:
+            # transição para estado hurt
+            self.change_locomotion_state(HurtingState(self))
 
     # --- Métodos de verificação ---
 

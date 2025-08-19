@@ -25,6 +25,7 @@ class Enemy:
         self.speed: float = 0.4
         self.facing_direction: str = "LEFT"
         self.health: int = 2
+        self.is_destroyed: bool = False
 
         # state machine
         self.ai_state: EnemyState = PatrollingState(self)
@@ -90,6 +91,15 @@ class Enemy:
         previous_state: EnemyState = self.ai_state
 
         # debug
-        print(f"Change: {previous_state} -> {new_state}")
+        print(f'Change: {previous_state} -> {new_state}')
 
         self.ai_state = new_state
+
+    # --- Métodos de ação ---
+
+    def take_damage(self, amount: int):
+        self.health -= amount
+        if self.health <= 0:
+            self.health = 0
+            self.is_destroyed = True
+            print("Enemy has been destroyed!")

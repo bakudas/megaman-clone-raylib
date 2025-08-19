@@ -84,7 +84,7 @@ def reset_game():
     }
 
 def run_game():
-    global bullets
+    global enemies
 
     # 2. Game Loop Principal
     while not pr.window_should_close():
@@ -103,16 +103,39 @@ def run_game():
         for b in world_state["bullets"]:
             b.update()
 
-        # Remover balas fora da tela
-        # List comprehension para criar uma lista apenas com as balas visíveis
-        world_state['bullets'] = [b for b in world_state['bullets'] if -400 < b.x_pos < 1200]
-
         # atualiza os inimigos
         for e in enemies:
             e.update(world_state, delta_time)
 
         # Atualizar a camera
         camera.update(player)
+
+        # 1. Colisão das Balas com os Inimigos
+        used_bullets = []
+        for bullet in world_state["bullets"]:
+            bullet_rect = pr.Rectangle(bullet.x_pos, bullet.y_pos, bullet.width, bullet.height)
+            for enemy in enemies:
+                enemy_rect = pr.Rectangle(enemy.x_pos, enemy.y_pos, enemy.width, enemy.height)
+                if pr.check_collision_recs(bullet_rect, enemy_rect):
+                    damage = 2 if bullet.type == 'charged' else 1
+                    enemy.take_damage(damage)
+                    used_bullets.append(bullet)  # Marca a bala para ser removida
+                    break  # Uma bala só pode atingir um inimigo
+
+        # 2. Colisão do Jogador com os Inimigos
+        player_rect = pr.Rectangle(player.x_pos, player.y_pos, player.width, player.height)
+        for enemy in enemies:
+            enemy_rect = pr.Rectangle(enemy.x_pos, enemy.y_pos, enemy.width, enemy.height)
+            if pr.check_collision_recs(player_rect, enemy_rect):
+                player.take_damage(5)  # Dano de colisão
+
+        # Remover balas fora da tela
+        # List comprehension para criar uma lista apenas com as balas visíveis
+        world_state['bullets'] = [b for b in world_state['bullets'] if -400 < b.x_pos < 1200]
+        # Remove as balas que atingiram um alvo
+        world_state["bullets"] = [b for b in world_state["bullets"] if b not in used_bullets]
+        # Remove os inimigos destruídos
+        enemies = [e for e in enemies if not e.is_destroyed]
 
         # 4. Draw
         pr.draw_fps(10, 10)
