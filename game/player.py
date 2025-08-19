@@ -204,7 +204,7 @@ class Player(Subject):
         if self.health <= 0:
             self.height = 0
             self.is_destroyed = True
-            self.notify(GameEvent.PLAYER_DIED)
+            self.destroy()
             print('player has been destroyed!')
         else:
             # transição para estado hurt
@@ -217,7 +217,16 @@ class Player(Subject):
         self.health += amount
         if self.health > self.max_health:
             self.health = self.max_health
-        self._notify_observers(GameEvent.PLAYER_HEALED)  # Notifica a UI!
+        self.notify(GameEvent.PLAYER_HEALED)  # Notifica a UI!
+
+    def destroy(self):
+        """Marca o jogador para destruição imediata."""
+        if not self.is_destroyed:  # Evita chamar a notificação múltiplas vezes
+            print("Player was destroyed by a hazard!")
+            self.health = 0
+            self.is_destroyed = True
+            # Notifica os observadores que o jogador morreu.
+            self.notify(GameEvent.PLAYER_DESTROYED)
 
     # --- Métodos de verificação ---
 
