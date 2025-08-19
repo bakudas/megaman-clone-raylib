@@ -165,9 +165,7 @@ def run_game():
             for pickup in world_state["pickups"]:
                 pickup_rect = pr.Rectangle(pickup.x_pos, pickup.y_pos, pickup.width, pickup.height)
                 if pr.check_collision_recs(player_rect, pickup_rect):
-                    player.health += pickup.heal_amount
-                    if player.health > player.max_health:  # Evita sobrecura
-                        player.health = player.max_health
+                    player.heal(pickup.heal_amount)
                     collected_pickups.append(pickup)
 
             # colisão do jogador com hazards

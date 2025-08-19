@@ -10,7 +10,7 @@ class PlayerUI(Observer):
         # Inscreve a UI para receber notificações do jogador
         self.player.add_observer(self)
 
-    def on_notify(self, event: str):
+    def on_notify(self, event, **kwargs):
         # A UI pode reagir a diferentes eventos
         if event == GameEvent.PLAYER_HURT:
             print('Ui received PLAYER_HURT event!')

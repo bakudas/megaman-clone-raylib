@@ -9,7 +9,10 @@ from game.player_state import (
     FallingState,
     WallSlidingState,
     DashState,
+    HurtingState,
 )
+from game.weapon_states import ReadyState, ChargingState, FullyChargedState
+from unittest.mock import Mock
 
 
 def test_player_inicialization(player):
@@ -133,13 +136,98 @@ def test_dashing_state_reverts_to_idle_after_duration(player, world_state):
     # (Given) Dado o jogador no estado DashState
     player.change_locomotion_state(DashState(player))
     assert isinstance(player.locomotion_state, DashState)
-    delta_time = 1
+    dash_state = player.locomotion_state
 
     # 2. Act
     # (When) Quando a duração do dash acaba
-    player.dash_duration = 0
-    player.update(world_state, delta_time)
+    dash_state.update(player, world_state, player.dash_duration)
 
     # 3. Assert
     # (Then) Então o estado do jogador deve mudar para IdleState
     assert isinstance(player.locomotion_state, IdleState)
+
+
+# --- Testes de Dano e Vida ---
+
+def test_player_takes_damage_and_enters_hurting_state(player):
+    # Given: um jogador com vida cheia
+    initial_health = player.health
+    assert not isinstance(player.locomotion_state, HurtingState)
+
+    # When: o jogador toma dano
+    player.take_damage(5)
+
+    # Then: sua vida diminui e ele entra no estado de "machucado"
+    assert player.health == initial_health - 5
+    assert isinstance(player.locomotion_state, HurtingState)
+
+def test_player_is_invincible_while_in_hurting_state(player):
+    # Given: um jogador que acabou de tomar dano
+    player.take_damage(5)
+    health_after_first_hit = player.health
+    assert isinstance(player.locomotion_state, HurtingState)
+
+    # When: ele tenta tomar dano novamente
+    player.take_damage(5)
+
+    # Then: sua vida não muda
+    assert player.health == health_after_first_hit
+
+def test_player_is_destroyed_when_health_reaches_zero(player):
+    # Given: um jogador com pouca vida
+    player.health = 5
+    assert player.is_destroyed is False
+
+    # When: ele toma dano fatal
+    player.take_damage(5)
+
+    # Then: ele é marcado como destruído
+    assert player.is_destroyed is True
+    assert player.health == 0
+
+
+# --- Testes da Máquina de Estados da Arma ---
+
+def test_weapon_starts_charging_on_shoot_press(player, world_state):
+    # Given: a arma está pronta
+    assert isinstance(player.weapon_state, ReadyState)
+
+    # When: o botão de tiro é pressionado
+    player.weapon_state.handle_input(player, "SHOOT_PRESS", world_state)
+
+    # Then: o estado da arma muda para Charging
+    assert isinstance(player.weapon_state, ChargingState)
+
+def test_weapon_fires_normal_shot_on_early_release(player, world_state):
+    # Given: a arma está carregando
+    player.change_weapon_state(ChargingState())
+    player.fire_normal_shot = Mock()  # Mock para não depender da classe Bullet
+
+    # When: o botão de tiro é solto antes de carregar completamente
+    player.weapon_state.handle_input(player, "SHOOT_RELEASE", world_state)
+
+    # Then: um tiro normal é disparado e o estado volta para Ready
+    player.fire_normal_shot.assert_called_once()
+    assert isinstance(player.weapon_state, ReadyState)
+
+def test_weapon_becomes_fully_charged(player, world_state):
+    # Given: a arma está carregando
+    player.change_weapon_state(ChargingState())
+
+    # When: tempo suficiente passa
+    player.weapon_state.update(player, player.charge_duration, world_state)
+
+    # Then: o estado muda para FullyCharged
+    assert isinstance(player.weapon_state, FullyChargedState)
+
+def test_weapon_fires_charged_shot_on_release(player, world_state):
+    # Given: a arma está totalmente carregada
+    player.change_weapon_state(FullyChargedState())
+    player.fire_charged_shot = Mock()  # Mock para não depender da classe Bullet
+
+    # When: o botão de tiro é solto
+    player.weapon_state.handle_input(player, "SHOOT_RELEASE", world_state)
+
+    # Then: um tiro carregado é disparado e o estado volta para Ready
+    player.fire_charged_shot.assert_called_once()
+    assert isinstance(player.weapon_state, ReadyState)

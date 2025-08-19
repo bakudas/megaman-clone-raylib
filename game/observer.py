@@ -9,7 +9,7 @@ class Observer(ABC):
     """
 
     @abstractmethod
-    def on_notify(self, event: str):
+    def on_notify(self, event, **kwargs):
         """Recebe a notificação de um evento do Sujeito."""
         pass
 
@@ -36,7 +36,7 @@ class Subject:
             # O observador não está na lista, ignora silenciosamente.
             pass
 
-    def notify(self, event: str):
+    def notify(self, event, **kwargs):
         """Notifica todos os observadores sobre um evento."""
         for observer in self._observers:
-            observer.on_notify(event)
+            observer.on_notify(event, **kwargs)

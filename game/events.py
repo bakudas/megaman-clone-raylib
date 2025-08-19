@@ -9,3 +9,5 @@ class GameEvent(Enum):
     PLAYER_SHOT_CHARGED = auto()
     PLAYER_HURT = auto()
     PLAYER_DESTROYED = auto()
+    PLAYER_HEALED = auto()
+    ENEMY_DESTROYED = auto()

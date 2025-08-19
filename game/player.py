@@ -202,10 +202,7 @@ class Player(Subject):
         self.health -= amount
         print(f'Player took: {amount} damage, {self.health} left')
         if self.health <= 0:
-            self.height = 0
-            self.is_destroyed = True
             self.destroy()
-            print('player has been destroyed!')
         else:
             # transição para estado hurt
             self.change_locomotion_state(HurtingState(self))
@@ -217,12 +214,12 @@ class Player(Subject):
         self.health += amount
         if self.health > self.max_health:
             self.health = self.max_health
-        self.notify(GameEvent.PLAYER_HEALED)  # Notifica a UI!
+        self.notify(GameEvent.PLAYER_HEALED)
 
     def destroy(self):
         """Marca o jogador para destruição imediata."""
         if not self.is_destroyed:  # Evita chamar a notificação múltiplas vezes
-            print("Player was destroyed by a hazard!")
+            print("Player was destroyed!")
             self.health = 0
             self.is_destroyed = True
             # Notifica os observadores que o jogador morreu.

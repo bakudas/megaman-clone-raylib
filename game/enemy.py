@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from game.enemy_states import EnemyState, PatrollingState, TurningState
 from game.pickup import Pickup
+from game.events import GameEvent
 from game.observer import Subject
 
 if TYPE_CHECKING:
@@ -122,6 +123,5 @@ class Enemy(Subject):
         if self.health <= 0:
             self.health = 0
             self.is_destroyed = True
-            self.notify({"event": "ENEMY_DESTROYED", "enemy": self})
+            self.notify(GameEvent.ENEMY_DESTROYED, enemy=self)
             print("Enemy has been destroyed!")
-
