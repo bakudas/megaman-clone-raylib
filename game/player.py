@@ -213,6 +213,12 @@ class Player(Subject):
             # mensagem para notificar os observadores
             self.notify(GameEvent.PLAYER_HURT)
 
+    def heal(self, amount: int):
+        self.health += amount
+        if self.health > self.max_health:
+            self.health = self.max_health
+        self._notify_observers(GameEvent.PLAYER_HEALED)  # Notifica a UI!
+
     # --- Métodos de verificação ---
 
     @property

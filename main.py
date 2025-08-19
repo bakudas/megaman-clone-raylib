@@ -2,6 +2,7 @@
 import pyray as pr
 from raylib.defines import GLFW_KEY_R
 
+from game.game_event_handler import GameEventHandler
 from game.player import Player
 from game.bullet import Bullet
 from game.platforms import Platform
@@ -60,18 +61,23 @@ world_state = {
     "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
     "wall_slide_gravity": 0.1,
     "platforms": level_platforms,
-    "bullets": []
+    "bullets": [],
+    "pickups": [],
+    "enemies": [Enemy(x= 100, y=300-32), Enemy(x=20, y=400-32)]
 }
 
-# Cria os inimigos
-enemies = [
-    Enemy(x= 100, y=300-32)
-]
+# Cria o gerenciador de eventos
+event_handler = GameEventHandler(world_state)
+
+# inscreve os inimigos no observador
+for e in world_state['enemies']:
+    e.add_observer(event_handler)
 
 # ---------------------------------------------------
 
 def reset_game():
     global world_state, player
+
     player = Player(
         x=VIRTUAL_SCREEN_WIDTH / 2 + 50,
         y=0,
@@ -84,12 +90,11 @@ def reset_game():
         "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
         "wall_slide_gravity": 0.1,
         "platforms": level_platforms,
-        "bullets": []
+        "bullets": [],
+        "pickups": [],
     }
 
 def run_game():
-    global enemies
-
     # 2. Game Loop Principal
     while not pr.window_should_close():
         # 3. Update
@@ -108,30 +113,44 @@ def run_game():
             b.update()
 
         # atualiza os inimigos
-        for e in enemies:
+        for e in world_state['enemies']:
             e.update(world_state, delta_time)
+
+        # atualiza os pickups
+        for pickup in world_state["pickups"]:  # <<< ATUALIZE OS PICKUPS
+            pickup.update(delta_time)
 
         # Atualizar a camera
         camera.update(player)
 
-        # 1. Colisão das Balas com os Inimigos
+        # Colisão das Balas com os Inimigos
         used_bullets = []
         for bullet in world_state["bullets"]:
             bullet_rect = pr.Rectangle(bullet.x_pos, bullet.y_pos, bullet.width, bullet.height)
-            for enemy in enemies:
+            for enemy in world_state['enemies']:
                 enemy_rect = pr.Rectangle(enemy.x_pos, enemy.y_pos, enemy.width, enemy.height)
                 if pr.check_collision_recs(bullet_rect, enemy_rect):
                     damage = 2 if bullet.type == 'charged' else 1
-                    enemy.take_damage(damage)
+                    enemy.take_damage(damage, world_state)
                     used_bullets.append(bullet)  # Marca a bala para ser removida
                     break  # Uma bala só pode atingir um inimigo
 
-        # 2. Colisão do Jogador com os Inimigos
+        # Colisão do Jogador com os Inimigos
         player_rect = pr.Rectangle(player.x_pos, player.y_pos, player.width, player.height)
-        for enemy in enemies:
+        for enemy in world_state['enemies']:
             enemy_rect = pr.Rectangle(enemy.x_pos, enemy.y_pos, enemy.width, enemy.height)
             if pr.check_collision_recs(player_rect, enemy_rect):
                 player.take_damage(5)  # Dano de colisão
+
+        # colisão do jogador com pickups
+        collected_pickups = []
+        for pickup in world_state["pickups"]:
+            pickup_rect = pr.Rectangle(pickup.x_pos, pickup.y_pos, pickup.width, pickup.height)
+            if pr.check_collision_recs(player_rect, pickup_rect):
+                player.health += pickup.heal_amount
+                if player.health > player.max_health:  # Evita sobrecura
+                    player.health = player.max_health
+                collected_pickups.append(pickup)
 
         # Remover balas fora da tela
         # List comprehension para criar uma lista apenas com as balas visíveis
@@ -139,7 +158,9 @@ def run_game():
         # Remove as balas que atingiram um alvo
         world_state["bullets"] = [b for b in world_state["bullets"] if b not in used_bullets]
         # Remove os inimigos destruídos
-        enemies = [e for e in enemies if not e.is_destroyed]
+        world_state['enemies'] = [e for e in world_state['enemies'] if not e.is_destroyed]
+        # Remove os pickups coletados
+        world_state["pickups"] = [p for p in world_state["pickups"] if p not in collected_pickups]
 
         # 4. DRAW
         # Começa a desenhar a tela virtual
@@ -166,13 +187,17 @@ def run_game():
         player.draw()
 
         # desenha os inimigos
-        for e in enemies:
+        for e in world_state["enemies"]:
             pr.draw_text('enemy patrol', int(e.x_pos - e.width/2), int(e.y_pos - 15), 10, pr.WHITE)
             e.draw()
 
         # Desenha as balas
         for bullet in world_state['bullets']:
             bullet.draw()
+
+        # desenha os pickups
+        for pickup in world_state["pickups"]:
+            pickup.draw()
 
         # termina o modo de camera 2D
         camera.end_mode()

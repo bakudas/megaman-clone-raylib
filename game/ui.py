@@ -20,7 +20,7 @@ class PlayerUI(Observer):
         Desenha os elementos de UI
         """
         # barra de vida (container)
-        pr.draw_rectangle(10, 10, self.player.max_health * 2, 10, pr.PRETO)
+        pr.draw_rectangle(10, 10, self.player.max_health * 2, 10, pr.BLACK)
         # vida atual
         pr.draw_rectangle(10, 10, self.player.health * 2, 10, pr.YELLOW)
         # borda

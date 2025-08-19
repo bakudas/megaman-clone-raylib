@@ -1,18 +1,21 @@
 # game/enemy.py
 from __future__ import annotations
 
-from socket import send_fds
-
+import random
 import pyray as pr
 from typing import TYPE_CHECKING
 
 from game.enemy_states import EnemyState, PatrollingState, TurningState
+from game.pickup import Pickup
+from game.observer import Subject
 
 if TYPE_CHECKING:
     from game.platforms import Platform
 
-class Enemy:
+class Enemy(Subject):
     def __init__(self, x, y):
+        super().__init__()
+
         # atributos de estado físico
         self.x_pos: float = x
         self.y_pos: float = y
@@ -26,6 +29,10 @@ class Enemy:
         self.facing_direction: str = "LEFT"
         self.health: int = 2
         self.is_destroyed: bool = False
+        self.is_flashing: bool = False
+        self.flash_duration: float = 0.1  # Duração do piscar em segundos
+        self.flash_timer: float = 0.0
+        self.drop_rate: float = 1
 
         # state machine
         self.ai_state: EnemyState = PatrollingState(self)
@@ -36,19 +43,27 @@ class Enemy:
         """
         Atualiza toda a lógica do inimigo
         """
+        # flash de dano
+        if self.is_flashing:
+            self.flash_timer -= delta_time
+            if self.flash_timer <= 0:
+                self.is_flashing = False
+
         self.x_pos += self.x_vel
         self.ai_state.update(self, world_state, delta_time)
+
 
     def draw(self) -> None:
         """
         Desenha o inimigo na tela
         """
+        color = pr.WHITE if self.is_flashing else pr.ORANGE
         pr.draw_rectangle(
             int(self.x_pos),
             int(self.y_pos),
             self.width,
             self.height,
-            pr.RED
+            color
         )
 
     # --- Métodos de verificação ---
@@ -97,9 +112,16 @@ class Enemy:
 
     # --- Métodos de ação ---
 
-    def take_damage(self, amount: int):
+    def take_damage(self, amount: int, world_state):
         self.health -= amount
+
+        # Ativa o flash de dano
+        self.is_flashing = True
+        self.flash_timer = self.flash_duration
+
         if self.health <= 0:
             self.health = 0
             self.is_destroyed = True
+            self.notify({"event": "ENEMY_DESTROYED", "enemy": self})
             print("Enemy has been destroyed!")
+
