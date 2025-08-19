@@ -8,5 +8,4 @@ class GameEvent(Enum):
     PLAYER_SHOT = auto()
     PLAYER_SHOT_CHARGED = auto()
     PLAYER_HURT = auto()
-    PLAYER_HEALED = auto()
     PLAYER_DIED = auto()
