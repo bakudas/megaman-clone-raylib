@@ -7,6 +7,7 @@ from game.bullet import Bullet
 from game.platforms import Platform
 from game.camera import Camera
 from game.enemy import Enemy
+from game.ui import PlayerUI
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -50,6 +51,9 @@ player = Player(
     speed=4,
     jump_strength=8
 )
+
+# Player UI
+ui = PlayerUI(player)
 
 # Configuração da física do nosso mundo
 world_state = {
@@ -137,9 +141,7 @@ def run_game():
         # Remove os inimigos destruídos
         enemies = [e for e in enemies if not e.is_destroyed]
 
-        # 4. Draw
-        pr.draw_fps(10, 10)
-
+        # 4. DRAW
         # Começa a desenhar a tela virtual
         pr.begin_texture_mode(target_texture)
 
@@ -176,6 +178,12 @@ def run_game():
         camera.end_mode()
 
         # UI
+        # show fps
+        pr.draw_fps(VIRTUAL_SCREEN_WIDTH - 80, 10)
+
+        # desenha a UI do player
+        ui.draw()
+
         # Texto debug
         # pr.draw_text("Just another Megaman clone...", 10, 10, 10, pr.LIGHTGRAY)
         # pr.draw_text(

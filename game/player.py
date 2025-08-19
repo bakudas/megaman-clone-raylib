@@ -1,7 +1,6 @@
 # game/self.py
 from __future__ import annotations
 
-from math import trunc
 from typing import TYPE_CHECKING
 from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z
 import pyray as pr
@@ -9,13 +8,18 @@ import pyray as pr
 from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState
 from game.weapon_states import WeaponState, ReadyState
 from game.bullet import Bullet
+from game.events import GameEvent
+from game.observer import Subject
 
 if TYPE_CHECKING:
     from game.platforms import Platform
 
 
-class Player:
+class Player(Subject):
     def __init__(self, x, y, width=0, height=0, speed=0, jump_strength=0) -> None:
+        super().__init__()
+
+        # atributos de estado físico
         self.x_pos: float = x
         self.y_pos: float = y
         self.x_vel: float = 0
@@ -149,6 +153,7 @@ class Player:
 
     def jump(self) -> None:
         self.y_vel = -self.jump_strength
+        self.notify(GameEvent.PLAYER_JUMPED)
 
     def wall_jump(self) -> None:
         self.y_vel = -self.jump_strength * self.wall_jump_scale_factor
@@ -157,6 +162,7 @@ class Player:
             if self.facing_direction == "RIGHT"
             else self.wall_jump_x_velocity
         )
+        self.notify(GameEvent.PLAYER_JUMPED)
 
     def fire_normal_shot(self, world_state: dict):
         """Cria e adiciona um projétil normal ao mundo."""
@@ -171,6 +177,7 @@ class Player:
 
         new_bullet = Bullet(start_x, start_y, velocity, 'normal')
         world_state["bullets"].append(new_bullet)
+        self.notify(GameEvent.PLAYER_SHOT)
 
     def fire_charged_shot(self, world_state: dict):
         """Cria e adiciona um projétil carregado ao mundo."""
@@ -185,9 +192,10 @@ class Player:
 
         new_bullet = Bullet(start_x, start_y, velocity, 'charged')
         world_state["bullets"].append(new_bullet)
+        self.notify(GameEvent.PLAYER_SHOT_CHARGED)
 
     def take_damage(self, amount: int):
-        # invencibilidade temporária, checa se já está tomando dado
+        # invencibilidade temporária, checa se já está a tomar dado
         if isinstance(self.locomotion_state, HurtingState):
             return
 
@@ -196,10 +204,14 @@ class Player:
         if self.health <= 0:
             self.height = 0
             self.is_destroyed = True
+            self.notify(GameEvent.PLAYER_DIED)
             print('player has been destroyed!')
         else:
             # transição para estado hurt
             self.change_locomotion_state(HurtingState(self))
+
+            # mensagem para notificar os observadores
+            self.notify(GameEvent.PLAYER_HURT)
 
     # --- Métodos de verificação ---
 
@@ -272,6 +284,8 @@ class Player:
                 # CASO 1: ATERRISSANDO NA PLATAFORMA
                 if is_falling and was_above:
                     if plat.type == "solid" or plat.type == "pass-through":
+                        if self.y_vel > 0:  # Só notifica se estava caindo
+                            self.notify(GameEvent.PLAYER_LANDED)
                         self.y_pos = plat.y - self.height
                         self.y_vel = 0
                         collision_occurred = True

@@ -98,8 +98,8 @@ def test_gravity_increases_vertical_velocity(player, world_state):
 def test_player_lands_on_solid_platform(player, world_state):
     # Given: um jogador caindo em direção a uma plataforma sólida
     player.x_pos = 80
-    player.y_pos = 199  # Começa com os pés um pouco acima da plataforma
-    player.y_vel = 5    # Caindo
+    player.y_pos = 195  # Acima da plataforma para garantir que a colisão ocorra de cima
+    player.y_vel = 10  # Caindo
     platform = world_state["platforms"][0]
     platform.x, platform.y, platform.p_type = 80, 250, "solid"
 
