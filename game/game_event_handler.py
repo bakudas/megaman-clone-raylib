@@ -1,7 +1,7 @@
 # game/game_event_handler.py
 import random
 from game.observer import Observer
-from game.events import GameEvent
+from game.events import PlayerEvent, EnemyEvent
 from game.pickup import Pickup
 
 class GameEventHandler(Observer):
@@ -9,7 +9,7 @@ class GameEventHandler(Observer):
         self.world_state = world_state
 
     def on_notify(self, event, **kwargs):
-        if event == GameEvent.ENEMY_DESTROYED:
+        if event == EnemyEvent.ENEMY_DESTROYED:
             enemy = kwargs.get("enemy")
             if not enemy: return
 

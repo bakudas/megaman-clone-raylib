@@ -1,6 +1,5 @@
 # tests/test_player.py
-import pytest
-
+from game.events import GameEvent, PlayerEvent
 from game.player import Player
 from game.player_state import (
     IdleState,
@@ -12,8 +11,17 @@ from game.player_state import (
     HurtingState,
 )
 from game.weapon_states import ReadyState, ChargingState, FullyChargedState
+from game.observer import Observer
 from unittest.mock import Mock
 
+# --- Mock Observer para Testes ---
+class MockObserver(Observer):
+    def __init__(self):
+        self.last_event = None
+
+    def on_notify(self, event, **kwargs):
+        print(f"MockObserver received: {event} with kwargs: {kwargs}")
+        self.last_event = event
 
 def test_player_inicialization(player):
     # 1. Arrange
@@ -231,3 +239,52 @@ def test_weapon_fires_charged_shot_on_release(player, world_state):
     # Then: um tiro carregado é disparado e o estado volta para Ready
     player.fire_charged_shot.assert_called_once()
     assert isinstance(player.weapon_state, ReadyState)
+
+def test_player_loses_a_life_when_health_reaches_zero(player):
+    # Given: um jogador com pouca vida
+    player.health = 1
+    initial_lives = player.lives
+
+    # When: ele toma dano fatal
+    player.take_damage(1)
+
+    # Then: ele perde uma vida
+    assert player.lives == initial_lives - 1
+    assert player.is_destroyed is True
+
+def test_player_is_permanently_destroyed_when_out_of_lives(player):
+    # Given: um jogador com pouca vida
+    player.health = 1
+    player.lives = 1
+
+    # When: ele toma dano fatal
+    player.destroy()
+
+    # Then: ele perde uma vida
+    assert player.lives == 0
+    assert player.is_permanently_destroyed is True
+
+def test_player_death_notifies_PLAYER_DIED_event(player):
+    # Arrange (Dado) um observador e um jogador com vidas
+    mock_observer = MockObserver()
+    player.add_observer(mock_observer)
+    player.lives = 2
+
+    # Act (Quando) o jogador é destruído
+    player.on_destroy()
+
+    # Assert (Então) o evento correto deve ser notificado
+    assert mock_observer.last_event == PlayerEvent.PLAYER_DIED
+
+
+def test_final_death_notifies_NO_LIVES_REMAINING_event(player):
+    # Arrange (Dado) um observador e um jogador na última vida
+    mock_observer = MockObserver()
+    player.add_observer(mock_observer)
+    player.lives = 1
+
+    # Act (Quando) o jogador é destruído
+    player.on_destroy()
+
+    # Assert (Então) o evento de fim de jogo deve ser notificado
+    assert mock_observer.last_event == GameEvent.NO_LIVES_REMAINING

@@ -5,10 +5,11 @@ from typing import TYPE_CHECKING
 from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z
 import pyray as pr
 
-from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState
+from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState, \
+    FallingState
 from game.weapon_states import WeaponState, ReadyState
 from game.bullet import Bullet
-from game.events import GameEvent
+from game.events import PlayerEvent, GameEvent
 from game.observer import Subject
 
 if TYPE_CHECKING:
@@ -27,13 +28,17 @@ class Player(Subject):
         self.width: int = width
         self.height: int = height
         self.color = pr.SKYBLUE
+        self.start_pos: tuple = (x, y)
+        self.last_checkpoint: tuple = self.start_pos
 
         # atributos de GAMEPLAY
         self.max_health: int = 28
         self.health: int = self.max_health
         self.knockback_force: float = 2
         self.is_destroyed: bool = False
+        self.is_permanently_destroyed: bool = False
         self.is_visible = True
+        self.lives: int = 3
 
         # SHOOT
         self.charge_duration: float = 1.0
@@ -153,7 +158,7 @@ class Player(Subject):
 
     def jump(self) -> None:
         self.y_vel = -self.jump_strength
-        self.notify(GameEvent.PLAYER_JUMPED)
+        self.notify(PlayerEvent.PLAYER_JUMPED)
 
     def wall_jump(self) -> None:
         self.y_vel = -self.jump_strength * self.wall_jump_scale_factor
@@ -162,7 +167,7 @@ class Player(Subject):
             if self.facing_direction == "RIGHT"
             else self.wall_jump_x_velocity
         )
-        self.notify(GameEvent.PLAYER_JUMPED)
+        self.notify(PlayerEvent.PLAYER_JUMPED)
 
     def fire_normal_shot(self, world_state: dict):
         """Cria e adiciona um projétil normal ao mundo."""
@@ -177,7 +182,7 @@ class Player(Subject):
 
         new_bullet = Bullet(start_x, start_y, velocity, 'normal')
         world_state["bullets"].append(new_bullet)
-        self.notify(GameEvent.PLAYER_SHOT)
+        self.notify(PlayerEvent.PLAYER_SHOT)
 
     def fire_charged_shot(self, world_state: dict):
         """Cria e adiciona um projétil carregado ao mundo."""
@@ -192,7 +197,7 @@ class Player(Subject):
 
         new_bullet = Bullet(start_x, start_y, velocity, 'charged')
         world_state["bullets"].append(new_bullet)
-        self.notify(GameEvent.PLAYER_SHOT_CHARGED)
+        self.notify(PlayerEvent.PLAYER_SHOT_CHARGED)
 
     def take_damage(self, amount: int):
         # invencibilidade temporária, checa se já está a tomar dado
@@ -206,24 +211,56 @@ class Player(Subject):
         else:
             # transição para estado hurt
             self.change_locomotion_state(HurtingState(self))
-
             # mensagem para notificar os observadores
-            self.notify(GameEvent.PLAYER_HURT)
+            self.notify(PlayerEvent.PLAYER_HURT)
 
     def heal(self, amount: int):
+        """
+        Cura o jogador com a quantidade especificada.
+        """
         self.health += amount
         if self.health > self.max_health:
             self.health = self.max_health
-        self.notify(GameEvent.PLAYER_HEALED)
+        self.notify(PlayerEvent.PLAYER_HEALED)
+
+    def respawn(self):
+        """
+        Restaura o jogador ao seu último checkpoint
+        """
+        self.x_pos, self.y_pos = self.last_checkpoint
+        self.health = self.max_health
+        self.is_destroyed = False
+        self.is_permanently_destroyed = False
+        self.x_vel = 0
+        self.y_vel = 0
+        self.change_locomotion_state(FallingState())
+        self.notify(PlayerEvent.PLAYER_RESPAWNED)
 
     def destroy(self):
-        """Marca o jogador para destruição imediata."""
-        if not self.is_destroyed:  # Evita chamar a notificação múltiplas vezes
-            print("Player was destroyed!")
+        """
+        Marca o jogador para destruição imediata
+        """
+        if not self.is_destroyed:
             self.health = 0
-            self.is_destroyed = True
-            # Notifica os observadores que o jogador morreu.
-            self.notify(GameEvent.PLAYER_DESTROYED)
+            self.on_destroy()
+
+    # --- Callbacks ---
+    def on_destroy(self):
+        """
+        Callback chamado quando o jogador é destruído.
+        """
+        if self.is_destroyed: return
+
+        print("Player was destroyed!")
+        self.lives -= 1
+        self.is_destroyed = True
+
+        if self.lives <= 0:
+            self.is_permanently_destroyed = True
+            self.notify(PlayerEvent.PLAYER_DESTROYED)
+            self.notify(GameEvent.NO_LIVES_REMAINING)
+        else:
+            self.notify(PlayerEvent.PLAYER_DIED)
 
     # --- Métodos de verificação ---
 
@@ -297,7 +334,7 @@ class Player(Subject):
                 if is_falling and was_above:
                     if plat.type == "solid" or plat.type == "pass-through":
                         if self.y_vel > 0:  # Só notifica se estava caindo
-                            self.notify(GameEvent.PLAYER_LANDED)
+                            self.notify(PlayerEvent.PLAYER_LANDED)
                         self.y_pos = plat.y - self.height
                         self.y_vel = 0
                         collision_occurred = True

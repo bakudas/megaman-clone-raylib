@@ -5,7 +5,7 @@ from unittest.mock import Mock
 from game.enemy import Enemy
 from game.enemy_states import EnemyState, PatrollingState, TurningState
 from game.platforms import Platform
-from game.events import GameEvent
+from game.events import EnemyEvent
 
 
 def test_patrolling_enemy_turns_at_ledge(patrolling_enemy, world_state):
@@ -67,5 +67,5 @@ def test_enemy_notifies_observers_on_death(patrolling_enemy, world_state):
 
     # Then: o observador é notificado com o evento correto e os dados do inimigo
     mock_observer.on_notify.assert_called_once_with(
-        GameEvent.ENEMY_DESTROYED, enemy=patrolling_enemy
+        EnemyEvent.ENEMY_DESTROYED, enemy=patrolling_enemy
     )

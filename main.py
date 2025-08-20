@@ -11,14 +11,8 @@ from game.camera import Camera
 from game.enemy import Enemy
 from game.ui import PlayerUI
 from game.hazards import Hazard
-
-
-# --- MÁQUINA DE ESTADOS DO JOGO ---
-class GameState(Enum):
-    PLAYING = auto()
-    GAME_OVER = auto()
-# ----------------------------------
-
+from game.checkpoints import Checkpoint
+from game.events import GameEvent
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -74,7 +68,8 @@ world_state = {
     "bullets": [],
     "pickups": [],
     "enemies": [Enemy(x= 100, y=300-32), Enemy(x=20, y=400-32)],
-    "hazards": [Hazard(x=100, y=388, width=156, height=12)]
+    "hazards": [Hazard(x=100, y=388, width=156, height=12)],
+    "checkpoints": [Checkpoint(x=500, y=150, width=20, height=50)]
 }
 
 # Cria o gerenciador de eventos
@@ -85,7 +80,9 @@ for e in world_state['enemies']:
     e.add_observer(event_handler)
 
 # --- ESTADO INICIAL DO JOGO ---
-game_state = GameState.PLAYING
+game_state = GameEvent.PLAYING
+respawn_timer = 0.0
+RESPAWN_DELAY = 1.0 # 1 segundo de tela preta antes de renascer
 # ------------------------------
 
 def reset_game():
@@ -110,11 +107,11 @@ def reset_game():
     }
 
 def run_game():
-    global  game_state
+    global  game_state, respawn_timer
 
     # 2. Game Loop Principal
     while not pr.window_should_close():
-        if game_state == GameState.PLAYING:
+        if game_state == GameEvent.PLAYING:
             # 3. Update
             delta_time = pr.get_frame_time()
 
@@ -174,6 +171,24 @@ def run_game():
                 if pr.check_collision_recs(player_rect, hazard_rect):
                     player.destroy()
 
+            # colisão com checkpoints
+            player_rect = pr.Rectangle(player.x_pos, player.y_pos, player.width, player.height)
+            for cp in world_state["checkpoints"]:
+                if not cp.is_activated:
+                    cp_rect = pr.Rectangle(cp.x, cp.y, cp.width, cp.height)
+                    if pr.check_collision_recs(player_rect, cp_rect):
+                        print("Checkpoint activated!")
+                        cp.is_activated = True
+                        player.last_checkpoint = (cp.x, cp.y - player.height)
+
+            # Lógica de transição de estado
+            if player.is_destroyed:
+                if player.lives > 0:
+                    game_state = GameEvent.PLAYER_DIED
+                    respawn_timer = RESPAWN_DELAY
+                else:
+                    game_state = GameEvent.GAME_OVER
+
             # LIMPEZA
             # Remover balas fora da tela
             # List comprehension para criar uma lista apenas com as balas visíveis
@@ -184,11 +199,12 @@ def run_game():
             world_state['enemies'] = [e for e in world_state['enemies'] if not e.is_destroyed]
             # Remove os pickups coletados
             world_state["pickups"] = [p for p in world_state["pickups"] if p not in collected_pickups]
-
-            # --- TRANSIÇÃO PARA GAME OVER ---
-            if player.is_destroyed:
-                game_state = GameState.GAME_OVER
-            # --------------------------------
+            
+        elif game_state == GameEvent.PLAYER_DIED:
+            respawn_timer -= delta_time
+            if respawn_timer <= 0:
+                player.respawn()
+                game_state = GameEvent.PLAYING
 
         # 4. DRAW
         # Começa a desenhar a tela virtual
@@ -231,6 +247,10 @@ def run_game():
         for pickup in world_state["pickups"]:
             pickup.draw()
 
+        # desenha os checkpoints
+        for cp in world_state["checkpoints"]:
+            cp.draw()
+
         # termina o modo de camera 2D
         camera.end_mode()
 
@@ -241,8 +261,11 @@ def run_game():
         # desenha a UI do player
         ui.draw()
 
+        if game_state == GameEvent.PLAYER_DIED:
+            pr.draw_rectangle(0, 0, VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT, pr.Color(0, 0, 0, 150))
+
         # --- DESENHO DA TELA DE GAME OVER ---
-        if game_state == GameState.GAME_OVER:
+        if game_state == GameEvent.GAME_OVER:
             pr.draw_rectangle(0, 0, VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT, pr.Color(0, 0, 0, 150))
             pr.draw_text("GAME OVER", 80, 100, 20, pr.WHITE)
         # -------------------------------------
