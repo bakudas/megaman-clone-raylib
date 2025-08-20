@@ -9,6 +9,7 @@ from game.bullet import Bullet
 from game.platforms import Platform
 from game.camera import Camera
 from game.enemy import Enemy
+from game.sfx_manager import SFXManager
 from game.ui import PlayerUI
 from game.hazards import Hazard
 from game.checkpoints import Checkpoint
@@ -51,6 +52,11 @@ player = Player(
 # Player UI
 ui = PlayerUI(player)
 
+# Inicializar o Audio
+pr.init_audio_device()
+sfx_manager = SFXManager()
+sfx_manager.load_sounds()
+
 # Configuração da física do nosso mundo
 world_state = {
     "player_start_x_pos": level_content["start_position"]["x"],
@@ -66,7 +72,7 @@ world_state = {
 }
 
 # Cria o gerenciador de eventos
-event_handler = GameEventHandler(world_state)
+event_handler = GameEventHandler(world_state, sfx_manager)
 
 # inscreve os inimigos no observador
 for e in world_state['enemies']:
@@ -112,6 +118,10 @@ def run_game():
             # atualiza os pickups
             for pickup in world_state["pickups"]:  # <<< ATUALIZE OS PICKUPS
                 pickup.update(delta_time)
+
+            # atualiza os efeitos
+            for p in world_state["particles"]: p.update(delta_time)
+            for a in world_state["after_images"]: a.update(delta_time)
 
             # Atualizar a camera
             camera.update(player)
@@ -177,6 +187,9 @@ def run_game():
             world_state['enemies'] = [e for e in world_state['enemies'] if not e.is_destroyed]
             # Remove os pickups coletados
             world_state["pickups"] = [p for p in world_state["pickups"] if p not in collected_pickups]
+            # Remove os efeitos
+            world_state["particles"] = [p for p in world_state["particles"] if p.lifespan > 0]
+            world_state["after_images"] = [a for a in world_state["after_images"] if a.lifespan > 0]
             
         elif game_state == GameEvent.PLAYER_DIED:
             respawn_timer -= delta_time
@@ -228,6 +241,10 @@ def run_game():
         # desenha os checkpoints
         for cp in world_state["checkpoints"]:
             cp.draw()
+
+        # Desenha os efeitos
+        for a in world_state["after_images"]: a.draw()
+        for p in world_state["particles"]: p.draw()
 
         # termina o modo de camera 2D
         camera.end_mode()
@@ -300,6 +317,10 @@ def run_game():
 
         # finaliza o desenho na tela real
         pr.end_drawing()
+
+    # finaliza o audio
+    sfx_manager.unload_sounds()
+    pr.close_audio_device()
 
     # 5. Final
     pr.close_window()

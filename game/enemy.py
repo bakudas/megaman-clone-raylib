@@ -121,7 +121,16 @@ class Enemy(Subject):
         self.flash_timer = self.flash_duration
 
         if self.health <= 0:
-            self.health = 0
-            self.is_destroyed = True
-            self.notify(EnemyEvent.ENEMY_DESTROYED, enemy=self)
-            print("Enemy has been destroyed!")
+            self.destroy()
+
+    def destroy(self):
+        if self.is_destroyed: return
+
+        self.health = 0
+        self.is_destroyed = True
+        self.on_destroy()
+
+    def on_destroy(self):
+        print("Enemy has been destroyed!")
+        # Notifica observadores (para drops E agora para efeitos visuais/sonoros)
+        self.notify(EnemyEvent.ENEMY_DESTROYED, enemy=self)

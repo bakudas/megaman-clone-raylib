@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pyray as pr
 
 from game.weapon_states import ChargingState, FullyChargedState
+from game.effects import AfterImage
 
 # Forward declaration para evitar import circular
 if TYPE_CHECKING:
@@ -177,6 +178,7 @@ class DashState(PlayerState):
     def __init__(self, player: Player):
         # seta o timer
         self.timer = player.dash_duration
+        self.spawn_fx_timer = 0.05
 
         # aplica a velocidade do dach
         player.x_vel = (
@@ -193,13 +195,21 @@ class DashState(PlayerState):
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
         # timer para o cooldown
         self.timer -= delta_time
+        self.spawn_fx_timer -= delta_time
+
         # o dash ignora a gravidade momentaneamente
         player.y_vel = 0
 
         # pinta o player para feedback visual do dash
         player.color = pr.WHITE
 
-        # estou do timer
+        # Lógica para criar o rastro
+        if self.spawn_fx_timer <= 0:
+            self.spawn_fx_timer = 0.05
+            after_image = AfterImage(player.x_pos, player.y_pos, player.width, player.height)
+            world_state["after_images"].append(after_image)
+
+        # estouro do timer
         if self.timer <= 0:
             # o dash ignora a gravidade momentaneamente
             player.x_vel = 0
