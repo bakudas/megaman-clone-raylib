@@ -3,7 +3,7 @@ import pyray as pr
 from raylib.defines import GLFW_KEY_R
 from enum import Enum, auto
 
-from game.game_event_handler import GameEventHandler
+from game.game_event_handler import DropSystemHandler, VFXEventHandler, SoundEventHandler
 from game.player import Player
 from game.bullet import Bullet
 from game.platforms import Platform
@@ -68,15 +68,25 @@ world_state = {
     "pickups": [],
     "enemies": level_content["enemies"],
     "hazards": level_content["hazards"],
-    "checkpoints": level_content["checkpoints"]
+    "checkpoints": level_content["checkpoints"],
+    "particles": [],
+    "after_images": []
 }
 
 # Cria o gerenciador de eventos
-event_handler = GameEventHandler(world_state, sfx_manager)
+sound_handler = SoundEventHandler(sfx_manager)
+vfx_handler = VFXEventHandler(world_state)
+drop_handler = DropSystemHandler(world_state)
 
-# inscreve os inimigos no observador
+# inscreve o player e os inimigos no observador (sfx e vfx)
+player.add_observer(sound_handler)
+player.add_observer(vfx_handler)
+
+# inscreve os inimigos no observadores (sfx, vfx e drop)
 for e in world_state['enemies']:
-    e.add_observer(event_handler)
+    e.add_observer(sound_handler)
+    e.add_observer(vfx_handler)
+    e.add_observer(drop_handler)
 
 # --- ESTADO INICIAL DO JOGO ---
 game_state = GameEvent.PLAYING
