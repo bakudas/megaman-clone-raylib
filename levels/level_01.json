@@ -1,0 +1,25 @@
+{
+  "start_position": { "x": 40, "y": 80 },
+  "platforms": [
+    { "x": 0, "y": 212, "width": 100, "height": 12, "p_type": "solid" },
+    { "x": 160, "y": 212, "width": 100, "height": 12, "p_type": "solid" },
+    { "x": 300, "y": 180, "width": 80, "height": 12, "p_type": "pass-through" },
+    { "x": 300, "y": 100, "width": 50, "height": 12, "p_type": "solid" },
+    { "x": 420, "y": 150, "width": 80, "height": 12, "p_type": "solid" }
+  ],
+  "walls": [
+    { "x": 260, "y": 50, "width": 12, "height": 180, "p_type": "solid" },
+    { "x": 390, "y": 0, "width": 12, "height": 120, "p_type": "solid" }
+  ],
+  "enemies": [
+    { "x": 180, "y": 180 },
+    { "x": 300, "y": 68 },
+    { "x": 430, "y": 118 }
+  ],
+  "hazards": [
+    { "x": 100, "y": 212, "width": 60, "height": 12 }
+  ],
+  "checkpoints": [
+    { "x": 440, "y": 100, "width": 20, "height": 50 }
+  ]
+}

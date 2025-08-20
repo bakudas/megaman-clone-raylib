@@ -13,6 +13,7 @@ from game.ui import PlayerUI
 from game.hazards import Hazard
 from game.checkpoints import Checkpoint
 from game.events import GameEvent
+from game.level_loader import load_level
 
 # 1. Inicialização
 # -------------------------------------------------
@@ -34,23 +35,13 @@ target_texture = pr.load_render_texture(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEI
 # Inicializar a Camera
 camera = Camera(VIRTUAL_SCREEN_WIDTH, VIRTUAL_SCREEN_HEIGHT)
 
-# Cria uma lista de plataformas para definir o nível
-level_platforms = [
-    # Chão
-    Platform(0, 400, 280, 50, "solid"),
-    Platform(376, 400, 300, 50, "solid"),
-    # Paredes do poço
-    Platform(280, 0, 20, 450, "solid"),
-    Platform(356, 0, 20, 450, "solid"),
-    # Plataforma voadora
-    Platform(96, 300, 150, 32, "solid")
-
-]
+# --- CARREGANDO O NÍVEL ---
+level_content = load_level("levels/level_01.json")
 
 # Estado inicial do jogador
 player = Player(
-    x=VIRTUAL_SCREEN_WIDTH / 2 + 50,
-    y=0,
+    x=level_content["start_position"]["x"],
+    y=level_content["start_position"]["y"],
     width=32,
     height=35,
     speed=4,
@@ -64,12 +55,12 @@ ui = PlayerUI(player)
 world_state = {
     "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
     "wall_slide_gravity": 0.1,
-    "platforms": level_platforms,
+    "platforms": level_content["platforms"],
     "bullets": [],
     "pickups": [],
-    "enemies": [Enemy(x= 100, y=300-32), Enemy(x=20, y=400-32)],
-    "hazards": [Hazard(x=100, y=388, width=156, height=12)],
-    "checkpoints": [Checkpoint(x=500, y=150, width=20, height=50)]
+    "enemies": level_content["enemies"],
+    "hazards": level_content["hazards"],
+    "checkpoints": level_content["checkpoints"]
 }
 
 # Cria o gerenciador de eventos

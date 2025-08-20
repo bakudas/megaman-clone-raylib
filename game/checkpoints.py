@@ -11,5 +11,5 @@ class Checkpoint:
 
     def draw(self):
         # Um checkpoint desativado é cinza, um ativado é ciano.
-        color = pr.CYAN if self.is_activated else pr.DARKGRAY
+        color = pr.BLUE if self.is_activated else pr.BLACK
         pr.draw_rectangle_lines(int(self.x), int(self.y), self.width, self.height, color)
