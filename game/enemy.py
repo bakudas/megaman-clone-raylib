@@ -107,7 +107,7 @@ class Enemy(Subject):
         previous_state: EnemyState = self.ai_state
 
         # debug
-        print(f'Change: {previous_state} -> {new_state}')
+        #print(f'Change: {previous_state} -> {new_state}')
 
         self.ai_state = new_state
 

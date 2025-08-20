@@ -1,0 +1,88 @@
+{
+  "level_name": "Urban Assault",
+  "level_theme": "industrial_city",
+  "start_position": { "x": 40, "y": 400 },
+
+  "platforms": [
+    { "x": 0, "y": 440, "width": 120, "height": 16, "p_type": "solid" },
+    { "x": 160, "y": 420, "width": 80, "height": 16, "p_type": "solid" },
+    { "x": 280, "y": 400, "width": 100, "height": 16, "p_type": "solid" },
+    { "x": 420, "y": 380, "width": 60, "height": 16, "p_type": "solid" },
+    { "x": 520, "y": 320, "width": 80, "height": 16, "p_type": "solid" },
+    { "x": 420, "y": 260, "width": 60, "height": 16, "p_type": "solid" },
+    { "x": 520, "y": 200, "width": 80, "height": 16, "p_type": "solid" },
+    { "x": 640, "y": 180, "width": 160, "height": 20, "p_type": "solid" },
+    { "x": 840, "y": 220, "width": 60, "height": 12, "p_type": "pass-through" },
+    { "x": 920, "y": 180, "width": 60, "height": 12, "p_type": "pass-through" },
+    { "x": 1000, "y": 140, "width": 60, "height": 12, "p_type": "pass-through" },
+    { "x": 1100, "y": 120, "width": 40, "height": 12, "p_type": "solid" },
+    { "x": 1180, "y": 100, "width": 40, "height": 12, "p_type": "solid" },
+    { "x": 1260, "y": 80, "width": 40, "height": 12, "p_type": "solid" },
+    { "x": 1340, "y": 200, "width": 200, "height": 20, "p_type": "solid" },
+    { "x": 1360, "y": 120, "width": 60, "height": 12, "p_type": "pass-through" },
+    { "x": 1460, "y": 120, "width": 60, "height": 12, "p_type": "pass-through" },
+    { "x": 1580, "y": 160, "width": 80, "height": 16, "p_type": "solid" },
+    { "x": 1700, "y": 200, "width": 80, "height": 16, "p_type": "solid" },
+    { "x": 1820, "y": 240, "width": 80, "height": 16, "p_type": "solid" },
+    { "x": 1940, "y": 280, "width": 300, "height": 20, "p_type": "solid" }
+  ],
+
+  "walls": [
+    { "x": 480, "y": 200, "width": 16, "height": 200, "p_type": "solid" },
+    { "x": 600, "y": 180, "width": 16, "height": 220, "p_type": "solid" },
+    { "x": 1320, "y": 120, "width": 16, "height": 100, "p_type": "solid" },
+    { "x": 1560, "y": 120, "width": 16, "height": 100, "p_type": "solid" },
+    { "x": 1920, "y": 200, "width": 16, "height": 100, "p_type": "solid" },
+    { "x": 2260, "y": 200, "width": 16, "height": 100, "p_type": "solid" }
+  ],
+
+  "enemies": [
+    { "x": 180, "y": 388},
+    { "x": 320, "y": 368},
+    { "x": 450, "y": 348},
+    { "x": 550, "y": 288},
+    { "x": 450, "y": 228},
+    { "x": 720, "y": 120},
+    { "x": 780, "y": 60},
+    { "x": 860, "y": 188},
+    { "x": 1020, "y": 108},
+    { "x": 1120, "y": 88},
+    { "x": 1200, "y": 68},
+    { "x": 1440, "y": 140},
+    { "x": 1600, "y": 128},
+    { "x": 1740, "y": 168},
+    { "x": 2000, "y": 248},
+    { "x": 2100, "y": 248},
+    { "x": 2180, "y": 248}
+  ],
+
+  "hazards": [
+    { "x": 120, "y": 456, "width": 40, "height": 8},
+    { "x": 240, "y": 456, "width": 40, "height": 8},
+    { "x": 380, "y": 456, "width": 220, "height": 8},
+    { "x": 1140, "y": 456, "width": 200, "height": 8},
+    { "x": 1380, "y": 140, "width": 8, "height": 60},
+    { "x": 1500, "y": 140, "width": 8, "height": 60},
+    { "x": 2040, "y": 260, "width": 20, "height": 20},
+    { "x": 2140, "y": 260, "width": 20, "height": 20}
+  ],
+
+  "checkpoints": [
+    { "x": 660, "y": 140, "width": 20, "height": 40},
+    { "x": 1080, "y": 80, "width": 20, "height": 40},
+    { "x": 1560, "y": 120, "width": 20, "height": 40}
+  ],
+
+  "level_settings": {
+    "gravity": 0.8,
+    "terminal_velocity": 12,
+    "camera_bounds": { "min_x": 0, "max_x": 2400, "min_y": 0, "max_y": 480 },
+    "background_layers": ["city_far", "city_mid", "city_near"],
+    "music": "urban_assault_theme",
+    "completion_time_targets": {
+      "bronze": 180,
+      "silver": 120,
+      "gold": 90
+    }
+  }
+}

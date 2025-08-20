@@ -1,7 +1,6 @@
 # game/self.py
 from __future__ import annotations
 
-from encodings.punycode import selective_len
 from typing import TYPE_CHECKING
 from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z, GLFW_KEY_R
 import pyray as pr
@@ -354,7 +353,7 @@ class Player(Subject):
                 # CASO 1: ATERRISSANDO NA PLATAFORMA
                 if is_falling and was_above:
                     if plat.type == "solid" or plat.type == "pass-through":
-                        if self.y_vel > 0:  # Só notifica se estava caindo
+                        if isinstance(self.locomotion_state, FallingState):  # Só notifica se estava caindo
                             self.notify(PlayerEvent.PLAYER_LANDED)
                         self.y_pos = plat.y - self.height
                         self.y_vel = 0

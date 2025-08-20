@@ -29,11 +29,11 @@ class Game:
         self.KILL_Y: int = 1000
         self.FPS: int = 60
 
+        pr.set_config_flags(pr.FLAG_WINDOW_TRANSPARENT)
         pr.init_window(
             self.SCREEN_WIDTH, self.SCREEN_HEIGHT, "Mega Man Clone w/ TDD - Curso raylib (pyray)"
         )
         pr.set_target_fps(self.FPS)
-
         # Cria uma tela virtual para renderização do jogo
         self.target_texture = pr.load_render_texture(self.VIRTUAL_SCREEN_WIDTH, self.VIRTUAL_SCREEN_HEIGHT)
 
@@ -41,7 +41,7 @@ class Game:
         self.camera = Camera(self.VIRTUAL_SCREEN_WIDTH, self.VIRTUAL_SCREEN_HEIGHT)
 
         # --- CARREGANDO O NÍVEL ---
-        self.level_content = load_level("levels/level_01.json")
+        self.level_content = load_level("levels/level_02.json")
 
         # Estado inicial do jogador
         self.player = Player(
@@ -120,13 +120,24 @@ class Game:
             self.current_state.update(delta_time)
 
             # Lógica de desenho
-            pr.begin_drawing()
-            pr.clear_background(pr.BLACK)  # Fundo das letterboxes
-
             pr.begin_texture_mode(self.target_texture)
-            pr.clear_background(pr.DARKBLUE)  # Fundo do jogo
+            pr.clear_background(pr.BLACK)  # Fundo das letterboxes
+            backgroun_visibility = True
+            pr.clear_background(pr.BLANK if pr.is_window_state(pr.FLAG_WINDOW_TRANSPARENT) and not backgroun_visibility else pr.BLUE)
             self.current_state.draw()
             pr.end_texture_mode()
+
+            if pr.is_key_pressed(pr.KEY_D):
+                if pr.is_window_state(pr.FLAG_WINDOW_UNDECORATED):
+                    pr.clear_window_state(pr.FLAG_WINDOW_UNDECORATED)
+                    backgroun_visibility = True
+                else:
+                    pr.set_window_state(pr.FLAG_WINDOW_UNDECORATED)
+                    backgroun_visibility = False
+
+            pr.begin_drawing()
+
+            pr.clear_background(pr.BLANK if pr.is_window_state(pr.FLAG_WINDOW_TRANSPARENT) and not backgroun_visibility else pr.BLUE)
 
             # Desenha a textura final na tela
             source_rec = pr.Rectangle(0, 0, self.target_texture.texture.width, -self.target_texture.texture.height)
@@ -146,10 +157,13 @@ class Game:
                 0.0,  # rotação
                 pr.WHITE,  # cor/tinta
             )
+
+            pr.draw_fps(pr.get_screen_width() - 95, 10)
             pr.end_drawing()
 
     def cleanup(self):
         """Libera todos os recursos."""
         self.sfx_manager.unload_sounds()
         pr.close_audio_device()
+        pr.unload_render_texture(self.target_texture)
         pr.close_window()

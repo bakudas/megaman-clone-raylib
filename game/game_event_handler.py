@@ -22,6 +22,8 @@ class SoundEventHandler(Observer):
             self.sfx_manager.play("hit")
         elif event == PlayerEvent.PLAYER_HEALED:
             self.sfx_manager.play("heal")
+        elif event == PlayerEvent.PLAYER_LANDED:
+            self.sfx_manager.play("jump")
         elif event == EnemyEvent.ENEMY_DESTROYED:
             self.sfx_manager.play("explosion")
 
