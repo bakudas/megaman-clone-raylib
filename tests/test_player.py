@@ -1,7 +1,7 @@
 # tests/test_player.py
 from game.events import GameEvent, PlayerEvent
 from game.player import Player
-from game.player_state import (
+from game.player_states import (
     IdleState,
     JumpingState,
     JumpingState,

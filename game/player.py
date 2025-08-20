@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z, GLFW_KEY_R
 import pyray as pr
 
-from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState, \
+from game.player_states import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState, \
     FallingState
 from game.weapon_states import WeaponState, ReadyState
 from game.bullet import Bullet
