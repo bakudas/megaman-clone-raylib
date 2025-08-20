@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from game.game import Game
 
+from game.input_manager import GameAction
+from game.player_states import DashState
+
 class GameState(ABC):
     def __init__(self, game: Game):
         self.game = game
@@ -27,7 +30,37 @@ class GameState(ABC):
 
 class PlayingState(GameState):
     def handle_input(self):
-        pass
+        # O handle_input do estado agora consulta o InputManager
+        input_manager = self.game.input_manager
+
+        # --- Inputs da Arma ---
+        if input_manager.is_action_pressed(GameAction.SHOOT):
+            self.game.player.weapon_state.handle_input(self.game.player, "SHOOT_PRESS", self.game.world_state)
+
+        if input_manager.is_action_released(GameAction.SHOOT):
+            self.game.player.weapon_state.handle_input(self.game.player, "SHOOT_RELEASE", self.game.world_state)
+
+        # --- Inputs de Locomoção ---
+        if input_manager.is_action_pressed(GameAction.JUMP):
+            self.game.player.handle_input("JUMP")
+        if input_manager.is_action_released(GameAction.JUMP):
+            self.game.player.handle_input("JUMP_RELEASE")
+
+        if input_manager.is_action_pressed(GameAction.DASH):
+            self.game.player.handle_input("DASH")
+
+        # Movimento Horizontal
+        if not isinstance(self.game.player.locomotion_state, DashState):
+            horizontal_input_active = False
+            if input_manager.is_action_down(GameAction.MOVE_RIGHT):
+                self.game.player.handle_input("RIGHT")
+                horizontal_input_active = True
+            elif input_manager.is_action_down(GameAction.MOVE_LEFT):
+                self.game.player.handle_input("LEFT")
+                horizontal_input_active = True
+
+            if not horizontal_input_active:
+                self.game.player.handle_input("STOP")
 
     def update(self, delta_time: float):
         # A lógica de update principal do jogo agora vive aqui.

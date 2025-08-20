@@ -107,36 +107,7 @@ class Player(Subject):
         Atualiza toda a lógica do player
         """
         # self.x_vel = 0 # Reseta a intenção de movimento
-        self.horizontal_input_active = False
 
-        if pr.is_key_down(KEY_RIGHT):
-            self.handle_input("RIGHT")
-            self.horizontal_input_active = True
-        elif pr.is_key_down(KEY_LEFT):
-            self.handle_input("LEFT")
-            self.horizontal_input_active = True
-
-        if pr.is_key_pressed(GLFW_KEY_SPACE):
-            self.handle_input("JUMP")
-
-        if pr.is_key_released(pr.KEY_SPACE):  # <<< NOVO INPUT
-            self.handle_input("JUMP_RELEASE")
-
-        if pr.is_key_pressed(GLFW_KEY_Z):
-            self.handle_input("DASH")
-            self.horizontal_input_active = True
-
-        if pr.is_key_pressed(GLFW_KEY_X):
-            self.weapon_state.handle_input(self,"SHOOT_PRESS", world_state)
-
-        if pr.is_key_released(GLFW_KEY_X):
-            self.weapon_state.handle_input(self, "SHOOT_RELEASE", world_state)
-
-        # if pr.is_key_released(GLFW_KEY_R):
-        #     self.respawn()
-
-        if not self.horizontal_input_active:
-            self.handle_input("STOP")
 
         # atualiza o cooldown do dash
         if self.dash_cooldown > 0:

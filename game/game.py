@@ -3,16 +3,12 @@ import pyray as pr
 
 from game.game_event_handler import DropSystemHandler, VFXEventHandler, SoundEventHandler
 from game.player import Player
-from game.bullet import Bullet
-from game.platforms import Platform
 from game.camera import Camera
-from game.enemy import Enemy
 from game.sfx_manager import SFXManager
 from game.ui import PlayerUI
-from game.hazards import Hazard
-from game.checkpoints import Checkpoint
-from game.game_states import GameState, PlayingState, PlayerDiedState, GameOverState, MenuState
+from game.game_states import GameState, PlayingState
 from game.level_loader import load_level
+from .input_manager import InputManager, GameAction
 
 
 class Game:
@@ -28,8 +24,8 @@ class Game:
         self.player: Player
         self.KILL_Y: int = 1000
         self.FPS: int = 60
+        self.input_manager = InputManager()
 
-        pr.set_config_flags(pr.FLAG_WINDOW_TRANSPARENT)
         pr.init_window(
             self.SCREEN_WIDTH, self.SCREEN_HEIGHT, "Mega Man Clone w/ TDD - Curso raylib (pyray)"
         )
@@ -98,6 +94,10 @@ class Game:
         self.respawn_timer = 0.0
         self.RESPAWN_DELAY = 1.0  # 1 segundo de tela preta antes de renascer
 
+        # Debug: Verificar se o gamepad foi detectado
+        self.gamepad = 1
+        
+
     def reset_game(self, player: Player, state: dict):
         self.world_state = state
         player.x_pos = self.world_state["player_start_x_pos"]
@@ -127,14 +127,6 @@ class Game:
             self.current_state.draw()
             pr.end_texture_mode()
 
-            if pr.is_key_pressed(pr.KEY_D):
-                if pr.is_window_state(pr.FLAG_WINDOW_UNDECORATED):
-                    pr.clear_window_state(pr.FLAG_WINDOW_UNDECORATED)
-                    backgroun_visibility = True
-                else:
-                    pr.set_window_state(pr.FLAG_WINDOW_UNDECORATED)
-                    backgroun_visibility = False
-
             pr.begin_drawing()
 
             pr.clear_background(pr.BLANK if pr.is_window_state(pr.FLAG_WINDOW_TRANSPARENT) and not backgroun_visibility else pr.BLUE)
@@ -157,6 +149,12 @@ class Game:
                 0.0,  # rotação
                 pr.WHITE,  # cor/tinta
             )
+            if pr.is_gamepad_available(self.gamepad):
+                gamepad_name = pr.get_gamepad_name(self.gamepad)
+                if gamepad_name:  # Check if gamepad_name is not None
+                    pr.draw_text(f"GP{self.gamepad}: {gamepad_name}", 10, 10, 10, pr.BLACK)
+                else:
+                    pr.draw_text(f"GP{self.gamepad}: UNKNOWN", 10, 10, 10, pr.BLACK)
 
             pr.draw_fps(pr.get_screen_width() - 95, 10)
             pr.end_drawing()
