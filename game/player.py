@@ -1,8 +1,9 @@
 # game/self.py
 from __future__ import annotations
 
+from encodings.punycode import selective_len
 from typing import TYPE_CHECKING
-from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z
+from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z, GLFW_KEY_R
 import pyray as pr
 
 from game.player_state import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState, \
@@ -32,8 +33,8 @@ class Player(Subject):
         self.last_checkpoint: tuple = self.start_pos
 
         # atributos de GAMEPLAY
-        self.max_health: int = 28
-        self.health: int = self.max_health
+        self.MAX_HEALTH: int = 28
+        self.health: int = self.MAX_HEALTH
         self.knockback_force: float = 2
         self.is_destroyed: bool = False
         self.is_permanently_destroyed: bool = False
@@ -49,12 +50,18 @@ class Player(Subject):
         )
 
         # MOVEMENT
+        self.speed: float = speed
+        self.charge_run_speed: float = speed * 1.25
         self.horizontal_input_active: bool = False
         self.facing_direction: str = "RIGHT"
+        self.air_control_factor: float = 0.75
 
         # JUMP
-        self.speed: float = speed
         self.jump_strength: float = jump_strength
+        self.coyote_timer: float = 0.0
+        self.COYOTE_TIMER_DURATION: float = 0.1
+        self.JUMP_BUFFER_DURATION = 0.1
+        self.jump_buffer_timer: float = 0.0
 
         # WALL SLIDE
         self.is_wall_sliding: bool = False
@@ -113,6 +120,9 @@ class Player(Subject):
         if pr.is_key_pressed(GLFW_KEY_SPACE):
             self.handle_input("JUMP")
 
+        if pr.is_key_released(pr.KEY_SPACE):  # <<< NOVO INPUT
+            self.handle_input("JUMP_RELEASE")
+
         if pr.is_key_pressed(GLFW_KEY_Z):
             self.handle_input("DASH")
             self.horizontal_input_active = True
@@ -122,6 +132,9 @@ class Player(Subject):
 
         if pr.is_key_released(GLFW_KEY_X):
             self.weapon_state.handle_input(self, "SHOOT_RELEASE", world_state)
+
+        # if pr.is_key_released(GLFW_KEY_R):
+        #     self.respawn()
 
         if not self.horizontal_input_active:
             self.handle_input("STOP")
@@ -137,6 +150,14 @@ class Player(Subject):
         # atualiza a state machine
         self.locomotion_state.update(self, world_state, delta_time)
         self.weapon_state.update(self, delta_time, world_state)
+
+        # coyote timer
+        if self.coyote_timer > 0:
+            self.coyote_timer -= delta_time
+
+        # jump buffer timer
+        if self.jump_buffer_timer > 0:
+            self.jump_buffer_timer -= delta_time
 
     def handle_input(self, input_direction: str):
         """
@@ -219,8 +240,8 @@ class Player(Subject):
         Cura o jogador com a quantidade especificada.
         """
         self.health += amount
-        if self.health > self.max_health:
-            self.health = self.max_health
+        if self.health > self.MAX_HEALTH:
+            self.health = self.MAX_HEALTH
         self.notify(PlayerEvent.PLAYER_HEALED)
 
     def respawn(self):
@@ -228,7 +249,7 @@ class Player(Subject):
         Restaura o jogador ao seu último checkpoint
         """
         self.x_pos, self.y_pos = self.last_checkpoint
-        self.health = self.max_health
+        self.health = self.MAX_HEALTH
         self.is_destroyed = False
         self.is_permanently_destroyed = False
         self.x_vel = 0

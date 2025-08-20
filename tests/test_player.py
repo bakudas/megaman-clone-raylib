@@ -8,7 +8,7 @@ from game.player_state import (
     FallingState,
     WallSlidingState,
     DashState,
-    HurtingState,
+    HurtingState, RunningState,
 )
 from game.weapon_states import ReadyState, ChargingState, FullyChargedState
 from game.observer import Observer
@@ -288,3 +288,86 @@ def test_final_death_notifies_NO_LIVES_REMAINING_event(player):
 
     # Assert (Então) o evento de fim de jogo deve ser notificado
     assert mock_observer.last_event == GameEvent.NO_LIVES_REMAINING
+
+def test_player_can_jump_after_leaves_platform_during_coyote_time(player):
+    # Arrange (Dado) um jogador que acabou de cair e está no estado de queda
+    # mas ainda tem o coyote timer ativo
+    player.change_locomotion_state(FallingState())
+    player.coyote_timer = 0.05
+    assert isinstance(player.locomotion_state, FallingState)
+
+    # Act (Quando) ele tenta pular
+    player.handle_input("JUMP")
+
+    # Assert (Então) o jogador deve pular com sucesso
+    assert isinstance(player.locomotion_state, JumpingState)
+    assert player.y_vel < 0  # Pulou
+
+def test_player_cannot_jump_after_coyote_time_expires(player):
+    # Arrange (Dado) um jogador no estado de queda com o tempo de Coyote esgotado
+    player.change_locomotion_state(FallingState())
+    player.coyote_timer = 0
+    assert isinstance(player.locomotion_state, FallingState)
+
+    # Act (Quando) o input de pulo é processado
+    player.handle_input("JUMP")
+
+    # Assert (Então) o jogador NÃO deve pular e deve continuar caindo
+    assert isinstance(player.locomotion_state, FallingState)
+
+
+def test_buffered_jump_executes_upon_landing(player, world_state):
+    # Arrange (Dado) um jogador no ar que aperta o pulo um pouco cedo
+    player.change_locomotion_state(FallingState())
+    player.handle_input("JUMP")  # Isso deve ativar o buffer
+    assert player.jump_buffer_timer > 0
+
+    # Act (Quando) o jogador aterrissa (simulado pela transição para Idle e um update)
+    player.y_pos = 350  # Posição no chão
+    player.locomotion_state.update(player, world_state, 0.016)
+    # O update do FallingState o levará para IdleState, e o update do IdleState consumirá o buffer.
+    assert isinstance(player.locomotion_state, IdleState)
+
+    # TODO: resolver esse teste bugado
+    # Assert (Então) o jogador deve pular imediatamente
+    assert isinstance(player.locomotion_state, JumpingState)
+    assert player.y_vel < 0
+
+
+def test_releasing_jump_key_cuts_upward_velocity(player):
+    # Arrange (Dado) um jogador no estado de pulo, subindo rapidamente
+    player.change_locomotion_state(JumpingState())
+    player.y_vel = -10.0  # Subindo com força total
+
+    # Act (Quando) o comando para soltar a tecla de pulo é processado
+    player.handle_input("JUMP_RELEASE")
+
+    # Assert (Então) a velocidade de subida deve ser reduzida
+    assert player.y_vel > -10.0  # A velocidade foi cortada (agora é -5.0)
+
+
+def test_player_run_speed_increases_while_charging(player):
+    # Arrange (Dado) um jogador andando e carregando a arma
+    player.change_locomotion_state(RunningState())
+    player.change_weapon_state(ChargingState())
+    player.facing_direction = 'RIGHT'
+
+    # Act (Quando) a lógica de input de movimento é processada
+    player.handle_input("RIGHT")
+
+    # Assert (Então) a velocidade dele deve ser a velocidade de carga, que é maior
+    assert player.x_vel == player.charge_run_speed
+    assert player.x_vel > player.speed
+
+
+def test_player_run_speed_is_normal_when_not_charging(player):
+    # Arrange (Dado) um jogador andando, mas com a arma pronta
+    player.change_locomotion_state(RunningState())
+    player.change_weapon_state(ReadyState())  # Arma não está carregando
+    player.facing_direction = 'RIGHT'
+
+    # Act (Quando) a lógica de input de movimento é processada
+    player.handle_input("RIGHT")
+
+    # Assert (Então) a velocidade dele deve ser a normal
+    assert player.x_vel == player.speed

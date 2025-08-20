@@ -21,11 +21,11 @@ class PlayerUI(Observer):
         """
         # --- barra de vida ---
         # (um simples container)
-        pr.draw_rectangle(10, 10, self.player.max_health * 2, 10, pr.BLACK)
+        pr.draw_rectangle(10, 10, self.player.MAX_HEALTH * 2, 10, pr.BLACK)
         # vida atual
         pr.draw_rectangle(10, 10, self.player.health * 2, 10, pr.YELLOW)
         # borda
-        pr.draw_rectangle_lines(10, 10, self.player.max_health * 2, 10, pr.WHITE)
+        pr.draw_rectangle_lines(10, 10, self.player.MAX_HEALTH * 2, 10, pr.WHITE)
 
         # --- Contador de Vidas ---
         # (Um simples texto "x LIVES")

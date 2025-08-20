@@ -44,8 +44,8 @@ player = Player(
     y=level_content["start_position"]["y"],
     width=32,
     height=35,
-    speed=4,
-    jump_strength=8
+    speed=3,
+    jump_strength=7
 )
 
 # Player UI
@@ -53,6 +53,8 @@ ui = PlayerUI(player)
 
 # Configuração da física do nosso mundo
 world_state = {
+    "player_start_x_pos": level_content["start_position"]["x"],
+    "player_start_y_pos": level_content["start_position"]["y"],
     "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
     "wall_slide_gravity": 0.1,
     "platforms": level_content["platforms"],
@@ -76,29 +78,14 @@ respawn_timer = 0.0
 RESPAWN_DELAY = 1.0 # 1 segundo de tela preta antes de renascer
 # ------------------------------
 
-def reset_game():
-    global world_state, player
-
-    player = Player(
-        x=VIRTUAL_SCREEN_WIDTH / 2 + 50,
-        y=0,
-        width=32,
-        height=35,
-        speed=4,
-        jump_strength=8
-    )
-    world_state = {
-        "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
-        "wall_slide_gravity": 0.1,
-        "platforms": level_platforms,
-        "bullets": [],
-        "pickups": [],
-        "enemies": [Enemy(x=100, y=300 - 32), Enemy(x=20, y=400 - 32)],
-        "hazards": [Hazard(x=100, y=388, width=156, height=12)]
-    }
+def reset_game(player: Player, state: dict):
+    global world_state
+    world_state = state
+    player.x_pos = world_state["player_start_x_pos"]
+    player.y_pos = world_state["player_start_y_pos"]
 
 def run_game():
-    global  game_state, respawn_timer
+    global  game_state, respawn_timer, world_state
 
     # 2. Game Loop Principal
     while not pr.window_should_close():
@@ -109,7 +96,7 @@ def run_game():
             # inputs
             if pr.is_key_pressed(GLFW_KEY_R):
                 print("reset")
-                reset_game()
+                reset_game(player, world_state)
 
             # atualiza a lógica do player
             player.update(world_state, delta_time)

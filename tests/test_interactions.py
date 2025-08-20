@@ -40,14 +40,14 @@ def test_player_heals_by_collecting_pickup(player, pickup, world_state):
 
 def test_player_cannot_overheal(player, pickup, world_state):
     # Given: um jogador com vida quase cheia
-    player.health = player.max_health - 1
+    player.health = player.MAX_HEALTH - 1
     world_state["pickups"].append(pickup)
 
     # When: o jogador coleta um pickup
     player.heal(pickup.heal_amount)
 
     # Then: a vida do jogador é limitada ao máximo
-    assert player.health == player.max_health
+    assert player.health == player.MAX_HEALTH
 
 
 def test_enemy_destruction_spawns_pickup(world_state):

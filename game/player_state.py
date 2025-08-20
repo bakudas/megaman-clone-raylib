@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 import pyray as pr
 
+from game.weapon_states import ChargingState, FullyChargedState
 
 # Forward declaration para evitar import circular
 if TYPE_CHECKING:
@@ -50,10 +51,18 @@ class IdleState(PlayerState):
             new_state.handle_input(player, input_direction)
 
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
+        # Consome o buffer de pulo se ele existir
+        if player.jump_buffer_timer > 0:
+            player.jump()
+            player.jump_buffer_timer = 0
+            player.change_locomotion_state(JumpingState())
+            return
+
         if not player.is_on_ground(world_state):
             if player.y_vel < 0:
                 player.change_locomotion_state(JumpingState())
             elif player.y_vel > 0:
+                player.coyote_timer = player.COYOTE_TIMER_DURATION
                 player.change_locomotion_state(FallingState())
             elif player.is_touching_wall_in_air(world_state):
                 player.change_locomotion_state(WallSlidingState(player))
@@ -67,28 +76,49 @@ class RunningState(PlayerState):
         elif input_direction == "DASH":
             if player.dash_cooldown_timer <= 0:
                 player.change_locomotion_state(DashState(player))
-        elif input_direction == "RIGHT":
-            player.x_vel = player.speed
-            player.facing_direction = 'RIGHT'
-        elif input_direction == "LEFT":
-            player.x_vel = -player.speed
-            player.facing_direction = 'LEFT'
         elif input_direction == "STOP":
             player.x_vel = 0
             player.change_locomotion_state(IdleState(player))
 
+        # A lógica de definir a velocidade agora considera o estado da arma
+        current_speed = player.speed
+        if isinstance(player.weapon_state, (ChargingState, FullyChargedState)):
+            current_speed = player.charge_run_speed
+
+        if input_direction == "RIGHT":
+            player.x_vel = current_speed
+            player.facing_direction = 'RIGHT'
+        elif input_direction == "LEFT":
+            player.x_vel = -current_speed
+            player.facing_direction = 'LEFT'
+
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
+        # Consome o buffer de pulo se ele existir
+        if player.jump_buffer_timer > 0:
+            player.jump()
+            player.jump_buffer_timer = 0
+            player.change_locomotion_state(JumpingState())
+            return
+
         if not player.is_on_ground(world_state):
+            player.coyote_timer = player.COYOTE_TIMER_DURATION
             player.change_locomotion_state(FallingState())
 
 
 class JumpingState(PlayerState):
     def handle_input(self, player: Player, input_direction: str) -> None:
+        if input_direction == "JUMP":
+            player.jump_buffer_timer = player.JUMP_BUFFER_DURATION
+
+        if input_direction == "JUMP_RELEASE":
+            if player.y_vel < 0:
+                player.y_vel *= 0.5
+
         if input_direction == "RIGHT":
-            player.x_vel = player.speed
+            player.x_vel = player.speed * player.air_control_factor
             player.facing_direction = 'RIGHT'
         elif input_direction == "LEFT":
-            player.x_vel = -player.speed
+            player.x_vel = -player.speed * player.air_control_factor
             player.facing_direction = 'LEFT'
 
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
@@ -100,11 +130,18 @@ class JumpingState(PlayerState):
 
 class FallingState(PlayerState):
     def handle_input(self, player: Player, input_direction: str) -> None:
-        if input_direction == "RIGHT":
-            player.x_vel = player.speed
+        if input_direction == "JUMP":
+            if player.coyote_timer > 0:
+                player.jump()
+                player.coyote_timer = 0
+                player.change_locomotion_state(JumpingState())
+            else:
+                player.jump_buffer_timer = player.JUMP_BUFFER_DURATION
+        elif input_direction == "RIGHT":
+            player.x_vel = player.speed * player.air_control_factor
             player.facing_direction = 'RIGHT'
         elif input_direction == "LEFT":
-            player.x_vel = -player.speed
+            player.x_vel = -player.speed * player.air_control_factor
             player.facing_direction = 'LEFT'
 
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
