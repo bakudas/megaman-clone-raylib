@@ -149,10 +149,12 @@ class Game:
                 0.0,  # rotação
                 pr.WHITE,  # cor/tinta
             )
+
             if pr.is_gamepad_available(self.gamepad):
-                gamepad_name = pr.get_gamepad_name(self.gamepad)
+                gamepad_name = pr.glfw_get_joystick_name(self.gamepad)
                 if gamepad_name:  # Check if gamepad_name is not None
                     pr.draw_text(f"GP{self.gamepad}: {gamepad_name}", 10, 10, 10, pr.BLACK)
+                    pr.draw_text(f"GP{pr.is_gamepad_button_pressed(2, pr.GamepadButton.GAMEPAD_BUTTON_RIGHT_FACE_DOWN)}", 10, 20, 10, pr.BLACK)
                 else:
                     pr.draw_text(f"GP{self.gamepad}: UNKNOWN", 10, 10, 10, pr.BLACK)
 

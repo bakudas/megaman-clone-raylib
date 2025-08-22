@@ -51,15 +51,15 @@ class PlayingState(GameState):
 
         # Movimento Horizontal
         if not isinstance(self.game.player.locomotion_state, DashState):
-            horizontal_input_active = False
+            self.game.player.horizontal_input_active = False
             if input_manager.is_action_down(GameAction.MOVE_RIGHT):
                 self.game.player.handle_input("RIGHT")
-                horizontal_input_active = True
+                self.game.player.horizontal_input_active = True
             elif input_manager.is_action_down(GameAction.MOVE_LEFT):
                 self.game.player.handle_input("LEFT")
-                horizontal_input_active = True
+                self.game.player.horizontal_input_active = True
 
-            if not horizontal_input_active:
+            if not self.game.player.horizontal_input_active:
                 self.game.player.handle_input("STOP")
 
     def update(self, delta_time: float):
@@ -127,7 +127,7 @@ class PlayingState(GameState):
                     break  # Uma bala só pode atingir um inimigo
 
         # Colisão do Jogador com os Inimigos
-        player_rect = pr.Rectangle(self.game.player.x_pos, self.game.player.y_pos, self.game.player.width, self.game.player.height)
+        player_rect = pr.Rectangle(self.game.player.x_pos + self.game.player.width/2, self.game.player.y_pos, self.game.player.width/2, self.game.player.height)
         for enemy in self.game.world_state['enemies']:
             enemy_rect = pr.Rectangle(enemy.x_pos, enemy.y_pos, enemy.width, enemy.height)
             if pr.check_collision_recs(player_rect, enemy_rect):
@@ -148,20 +148,18 @@ class PlayingState(GameState):
                 self.game.player.destroy()
 
         # colisão com checkpoints
-        player_rect = pr.Rectangle(self.game.player.x_pos, self.game.player.y_pos, self.game.player.width, self.game.player.height)
         for cp in self.game.world_state["checkpoints"]:
             if not cp.is_activated:
                 cp_rect = pr.Rectangle(cp.x, cp.y, cp.width, cp.height)
                 if pr.check_collision_recs(player_rect, cp_rect):
                     print("Checkpoint activated!")
                     cp.is_activated = True
-                    self.game.playerlast_checkpoint = (cp.x, cp.y - self.game.player.height)
+                    self.game.player.last_checkpoint = (cp.x, cp.y - self.game.player.height)
 
     def cleanup_entities(self):
         # LIMPEZA
         # Remover balas fora da tela
-        # List comprehension para criar uma lista apenas com as balas visíveis
-        self.game.world_state['bullets'] = [b for b in self.game.world_state['bullets'] if -400 < b.x_pos < 1200]
+        self.game.world_state['bullets'] = [b for b in self.game.world_state['bullets'] if -4000 < b.x_pos < 6000]
         # Remove as balas que atingiram um alvo
         self.game.world_state["bullets"] = [b for b in self.game.world_state["bullets"] if b not in self.used_bullets]
         # Remove os inimigos destruídos
@@ -195,6 +193,9 @@ class GameOverState(GameState):
         self.game.get_previous_state().draw()
         pr.draw_rectangle(0, 0, self.game.VIRTUAL_SCREEN_WIDTH, self.game.VIRTUAL_SCREEN_HEIGHT, pr.Color(0, 0, 0, 200))
         pr.draw_text("GAME OVER", 80, 100, 20, pr.WHITE)
+
+    def update(self, delta_time: float):
+        pass
 
 
 class MenuState(GameState):

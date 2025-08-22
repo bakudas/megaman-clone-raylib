@@ -33,7 +33,7 @@ class Enemy(Subject):
         self.is_flashing: bool = False
         self.flash_duration: float = 0.1  # Duração do piscar em segundos
         self.flash_timer: float = 0.0
-        self.drop_rate: float = 1
+        self.drop_rate: float = 0.3
 
         # state machine
         self.ai_state: EnemyState = PatrollingState(self)

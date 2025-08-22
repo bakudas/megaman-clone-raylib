@@ -1,6 +1,7 @@
 # game/input_manager.py
 import pyray as pr
 from enum import Enum, auto
+from raylib.defines import GLFW_GAMEPAD_BUTTON_A, GLFW_GAMEPAD_BUTTON_B, GLFW_GAMEPAD_BUTTON_X, GLFW_GAMEPAD_BUTTON_Y, GLFW_KEY_A
 
 
 class GameAction(Enum):
@@ -13,7 +14,7 @@ class GameAction(Enum):
 
 
 class InputManager:
-    def __init__(self, gamepad_id: int = 0):
+    def __init__(self, gamepad_id: int = 1):
         self.gamepad_id = gamepad_id
 
         # Mapeia nossas ações a botões específicos do teclado e gamepad
@@ -31,17 +32,17 @@ class InputManager:
             GameAction.JUMP: {
                 "keys": [pr.KEY_SPACE],
                 # Botão inferior do "rosto" (A no Xbox, X no PlayStation)
-                "pad_buttons": [pr.GAMEPAD_BUTTON_RIGHT_FACE_DOWN]
+                "pad_buttons": [GLFW_GAMEPAD_BUTTON_A]
             },
             GameAction.SHOOT: {
                 "keys": [pr.GLFW_KEY_X],
                 # Botão esquerdo do "rosto" (X no Xbox, Quadrado no PlayStation)
-                "pad_buttons": [pr.GAMEPAD_BUTTON_RIGHT_FACE_LEFT]
+                "pad_buttons": [GLFW_GAMEPAD_BUTTON_X]
             },
             GameAction.DASH: {
                 "keys": [pr.GLFW_KEY_Z],
                 # Botão direito do "rosto" (B no Xbox, Círculo no PlayStation)
-                "pad_buttons": [pr.GAMEPAD_BUTTON_RIGHT_FACE_RIGHT]
+                "pad_buttons": [GLFW_GAMEPAD_BUTTON_B]
             }
         }
 

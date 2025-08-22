@@ -16,7 +16,7 @@ class Camera:
 
         self.smoothing_factor: float = 0.05
         self.looking_ahead_distance: float = 2.5
-        self.vertical_offset: float = -16
+        self.vertical_offset: float = -32
 
     def update(self, player: Player) -> None:
         """

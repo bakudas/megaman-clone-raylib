@@ -1,33 +1,36 @@
 {
   "level_name": "Urban Assault",
   "level_theme": "industrial_city",
-  "start_position": { "x": 40, "y": 400 },
+  "start_position": { "x": 40, "y": 0 },
 
   "platforms": [
-    { "x": 0, "y": 440, "width": 120, "height": 16, "p_type": "solid" },
+    { "x": -120, "y": 440, "width": 240, "height": 16, "p_type": "solid" },
     { "x": 160, "y": 420, "width": 80, "height": 16, "p_type": "solid" },
     { "x": 280, "y": 400, "width": 100, "height": 16, "p_type": "solid" },
+    { "x": 280, "y": 300, "width": 100, "height": 16, "p_type": "solid" },
+    { "x": 280, "y": 100, "width": 100, "height": 16, "p_type": "solid" },
     { "x": 420, "y": 380, "width": 60, "height": 16, "p_type": "solid" },
     { "x": 520, "y": 320, "width": 80, "height": 16, "p_type": "solid" },
     { "x": 420, "y": 260, "width": 60, "height": 16, "p_type": "solid" },
     { "x": 520, "y": 200, "width": 80, "height": 16, "p_type": "solid" },
-    { "x": 640, "y": 180, "width": 160, "height": 20, "p_type": "solid" },
+    { "x": 640, "y": 180, "width": 160, "height": 16, "p_type": "solid" },
     { "x": 840, "y": 220, "width": 60, "height": 12, "p_type": "pass-through" },
     { "x": 920, "y": 180, "width": 60, "height": 12, "p_type": "pass-through" },
     { "x": 1000, "y": 140, "width": 60, "height": 12, "p_type": "pass-through" },
-    { "x": 1100, "y": 120, "width": 40, "height": 12, "p_type": "solid" },
-    { "x": 1180, "y": 100, "width": 40, "height": 12, "p_type": "solid" },
-    { "x": 1260, "y": 80, "width": 40, "height": 12, "p_type": "solid" },
+    { "x": 1100, "y": 120, "width": 40, "height": 16, "p_type": "solid" },
+    { "x": 1180, "y": 100, "width": 40, "height": 16, "p_type": "solid" },
+    { "x": 1260, "y": 80, "width": 40, "height": 16, "p_type": "solid" },
     { "x": 1340, "y": 200, "width": 200, "height": 20, "p_type": "solid" },
     { "x": 1360, "y": 120, "width": 60, "height": 12, "p_type": "pass-through" },
     { "x": 1460, "y": 120, "width": 60, "height": 12, "p_type": "pass-through" },
     { "x": 1580, "y": 160, "width": 80, "height": 16, "p_type": "solid" },
     { "x": 1700, "y": 200, "width": 80, "height": 16, "p_type": "solid" },
     { "x": 1820, "y": 240, "width": 80, "height": 16, "p_type": "solid" },
-    { "x": 1940, "y": 280, "width": 300, "height": 20, "p_type": "solid" }
+    { "x": 1940, "y": 280, "width": 300, "height": 16, "p_type": "solid" }
   ],
 
   "walls": [
+    { "x": -120, "y": 0, "width": 16, "height": 480, "p_type": "solid" },
     { "x": 480, "y": 200, "width": 16, "height": 200, "p_type": "solid" },
     { "x": 600, "y": 180, "width": 16, "height": 220, "p_type": "solid" },
     { "x": 1320, "y": 120, "width": 16, "height": 100, "p_type": "solid" },
@@ -57,6 +60,7 @@
   ],
 
   "hazards": [
+    { "x": -2000, "y": 600, "width": 5000, "height": 8},
     { "x": 120, "y": 456, "width": 40, "height": 8},
     { "x": 240, "y": 456, "width": 40, "height": 8},
     { "x": 380, "y": 456, "width": 220, "height": 8},

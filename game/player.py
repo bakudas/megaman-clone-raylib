@@ -1,7 +1,8 @@
 # game/self.py
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from doctest import debug
+from typing import TYPE_CHECKING, get_origin
 from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z, GLFW_KEY_R
 import pyray as pr
 
@@ -11,6 +12,7 @@ from game.weapon_states import WeaponState, ReadyState
 from game.bullet import Bullet
 from game.events import PlayerEvent, GameEvent
 from game.observer import Subject
+from game.animation import AnimationManager
 
 if TYPE_CHECKING:
     from game.platforms import Platform
@@ -30,8 +32,10 @@ class Player(Subject):
         self.color = pr.SKYBLUE
         self.start_pos: tuple = (x, y)
         self.last_checkpoint: tuple = self.start_pos
+        self.collision_rect: pr.Rectangle = pr.Rectangle(x + self.width/2, y, int(self.width/2), int(self.height))
 
         # atributos de GAMEPLAY
+        self.first_fall: bool = True
         self.MAX_HEALTH: int = 28
         self.health: int = self.MAX_HEALTH
         self.knockback_force: float = 2
@@ -65,8 +69,8 @@ class Player(Subject):
         # WALL SLIDE
         self.is_wall_sliding: bool = False
         self.wall_slide_gravity: float = 0.25
-        self.wall_jump_x_velocity: float = self.jump_strength * 0.20
-        self.wall_jump_scale_factor: float = 0.8
+        self.wall_jump_x_velocity: float = self.jump_strength
+        self.wall_jump_scale_factor: float = 0.6
 
         # DASH
         self.dash_speed: float = speed * 2.5
@@ -74,9 +78,16 @@ class Player(Subject):
         self.dash_cooldown: float = 0.1
         self.dash_cooldown_timer: float = 0.0
 
+        # animation
+        self.anim_manager = AnimationManager("assets/sprites/megaman-x-spritesheet.png")
+        self.setup_animations()
+
         # state machine
-        self.locomotion_state: PlayerState = IdleState(self)
+        self.locomotion_state: PlayerState = FallingState(self)
         self.weapon_state: WeaponState = ReadyState()
+
+        # debug
+        self.debug: bool = False
 
     # --- Métodos de gerenciamento de estado ---
     def change_locomotion_state(self, new_state: PlayerState):
@@ -129,6 +140,10 @@ class Player(Subject):
         if self.jump_buffer_timer > 0:
             self.jump_buffer_timer -= delta_time
 
+        # Atualiza a animação
+        self.anim_manager.flip_horizontal = (self.facing_direction == 'LEFT')
+        self.anim_manager.update(delta_time)
+
     def handle_input(self, input_direction: str):
         """
         Delega o input para o estado atual
@@ -137,13 +152,30 @@ class Player(Subject):
 
     def draw(self) -> None:
         if self.is_visible:
-            pr.draw_rectangle(
-                int(self.x_pos),
-                int(self.y_pos),
-                int(self.width),
-                int(self.height),
-                self.color,
-            )
+
+            # pr.draw_rectangle(
+            #     int(self.x_pos),
+            #     int(self.y_pos),
+            #     int(self.width),
+            #     int(self.height),
+            #     self.color,
+            # )
+
+            # O offset de desenho pode precisar de ajuste para alinhar o sprite com a caixa de colisão
+            draw_y = self.y_pos - (self.anim_manager.animations[self.anim_manager.current_animation]["frames"][
+                                       0].height - self.height)
+            self.anim_manager.draw(self.x_pos, draw_y)
+
+            if self.debug:
+                # draw collision debug
+                pr.draw_rectangle_lines(int(self.x_pos + self.width/2), int(self.y_pos), int(self.width/2), int(self.height), pr.RED)
+                # collider right
+                pr.draw_rectangle_lines(int(self.x_pos + self.width - 1), int(self.y_pos + 5), 1, self.height, pr.ORANGE)
+                # collider left
+                pr.draw_rectangle_lines(int(self.x_pos + self.width/2), int(self.y_pos + 5), 1, self.height, pr.ORANGE)
+                # collider feet
+                pr.draw_rectangle_lines(int(self.x_pos + self.width / 2 + 5) , int(self.bottom), int(self.width/5), 1, pr.ORANGE)
+
 
     # --- Métodos de Ação ---
 
@@ -224,7 +256,7 @@ class Player(Subject):
         self.is_permanently_destroyed = False
         self.x_vel = 0
         self.y_vel = 0
-        self.change_locomotion_state(FallingState())
+        self.change_locomotion_state(FallingState(self))
         self.notify(PlayerEvent.PLAYER_RESPAWNED)
 
     def destroy(self):
@@ -232,8 +264,73 @@ class Player(Subject):
         Marca o jogador para destruição imediata
         """
         if not self.is_destroyed:
-            self.health = 0
             self.on_destroy()
+
+    def setup_animations(self):
+        """Define todas as animações do jogador."""
+        # Exemplo: você precisará ajustar os valores de x, y, w, h para o seu sprite sheet!
+        grid_size = (38, 48)
+        start_frames = [
+            pr.Rectangle(grid_size[0] * 0, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 1, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 2, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 3, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 4, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 5, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 6, 0, grid_size[0], grid_size[1]),
+        ]
+        idle_frames = [
+            pr.Rectangle(grid_size[0] * 7, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 8, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 9, 0, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 10, 0, grid_size[0], grid_size[1]),
+        ]
+        run_frames = [
+            pr.Rectangle(grid_size[0] * 0, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 1, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 2, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 3, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 4, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 5, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 6, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 7, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 8, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 9, grid_size[1], grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 10, grid_size[1], grid_size[0], grid_size[1]),
+        ]
+        jump_frames = [
+            pr.Rectangle(grid_size[0] * 0, grid_size[1] * 3, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 1, grid_size[1] * 3, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 2, grid_size[1] * 3, grid_size[0], grid_size[1]),
+        ]
+        fall_frames = [
+            pr.Rectangle(grid_size[0] * 3, grid_size[1] * 3, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 4, grid_size[1] * 3, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 5, grid_size[1] * 3, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 6, grid_size[1] * 3, grid_size[0], grid_size[1]),
+        ]
+        dash_frames = [
+            pr.Rectangle(grid_size[0] * 10, grid_size[1] * 2, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 11, grid_size[1] * 2, grid_size[0], grid_size[1]),
+        ]
+        hit_frames = [
+            pr.Rectangle(grid_size[0] * 12, grid_size[1] * 2, grid_size[0], grid_size[1]),
+            pr.Rectangle(grid_size[0] * 13, grid_size[1] * 2, grid_size[0], grid_size[1]),
+        ]
+        wall_slide_frames = [
+            pr.Rectangle(grid_size[0] * 2, grid_size[1] * 4, grid_size[0], grid_size[1]),
+        ]
+
+        self.anim_manager.add_animation("start", start_frames, 0.85)
+        self.anim_manager.add_animation("idle", idle_frames, 0.2)
+        self.anim_manager.add_animation("run", run_frames, 0.05)
+        self.anim_manager.add_animation("jump", jump_frames, 0.2)
+        self.anim_manager.add_animation("fall", fall_frames, 0.2)
+        self.anim_manager.add_animation("dash", dash_frames, 0.1)
+        self.anim_manager.add_animation("wall_slide", wall_slide_frames, 0.1)
+        self.anim_manager.add_animation("hit", hit_frames, 0.1)
+
+        self.anim_manager.play("idle")  # Animação inicial
 
     # --- Callbacks ---
     def on_destroy(self):
@@ -243,6 +340,8 @@ class Player(Subject):
         if self.is_destroyed: return
 
         print("Player was destroyed!")
+        self.first_fall = True
+        self.health = 0
         self.lives -= 1
         self.is_destroyed = True
 
@@ -266,7 +365,7 @@ class Player(Subject):
         """
         Verifica se o jogador está no chão.
         """
-        player_feet = pr.Rectangle(self.x_pos, self.bottom, self.width, 1)
+        player_feet = pr.Rectangle(self.x_pos + self.width / 2 + 5 , self.bottom, self.width/5, 1)
 
         for plat in world_physics.get("platforms", []):
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
@@ -280,9 +379,9 @@ class Player(Subject):
             return False
 
         check_rect_right = pr.Rectangle(
-            self.x_pos + self.width, self.y_pos + 5, 1, self.height
+            self.x_pos + self.width - 1, self.y_pos + 5, 2, self.height
         )
-        check_rect_left = pr.Rectangle(self.x_pos - 1, self.y_pos + 5, 1, self.height)
+        check_rect_left = pr.Rectangle(self.x_pos + self.width/2 - 1, self.y_pos + 5, 2, self.height)
 
         for plat in world_state.get("platforms", []):
             if plat.type == "solid":
@@ -309,7 +408,7 @@ class Player(Subject):
 
         # Checa colisão com plataformas
         collision_occurred = False
-        player_rect = pr.Rectangle(self.x_pos, self.y_pos, self.width, self.height)
+        player_rect = pr.Rectangle(self.x_pos + self.width/2, self.y_pos, int(self.width/2), int(self.height))
 
         for plat in world_state.get("platforms", []):
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
@@ -339,7 +438,7 @@ class Player(Subject):
 
         # Aplica gravidade se não estivermos no chão de uma plataforma
         if not collision_occurred:
-            if self.is_wall_sliding and self.horizontal_input_active:
+            if self.is_touching_wall_in_air(world_state) and self.horizontal_input_active:
                 # Aplica uma gravidade reduzida e limita a velocidade de queda
                 self.y_vel += self.wall_slide_gravity
                 if self.y_vel > 2:
@@ -351,7 +450,7 @@ class Player(Subject):
         # Aplica movimento horizontal
         self.x_pos += self.x_vel
 
-        player_rect = pr.Rectangle(self.x_pos, self.y_pos, self.width, self.height)
+        player_rect = pr.Rectangle(self.x_pos + self.width/2, self.y_pos, int(self.width/2), int(self.height))
         is_colliding_with_wall = False
 
         for plat in world_state.get("platforms", []):
@@ -364,7 +463,7 @@ class Player(Subject):
                         self.x_pos = plat.x - self.width
                         self.x_vel = 0
                     elif self.x_vel < 0:  # Movendo para a esquerda
-                        self.x_pos = plat.x + plat.width
+                        self.x_pos = (plat.x + plat.width) - self.width/2
                         self.x_vel = 0
                     # Se x_vel é 0, a posição já foi corrigida no frame anterior.
                     break  # Para após a primeira colisão

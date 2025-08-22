@@ -36,18 +36,19 @@ class PlayerState(ABC):
 class IdleState(PlayerState):
     def __init__(self, player: Player):
         player.x_vel = 0
+        player.anim_manager.play("idle")
 
     def handle_input(self, player: Player, input_direction: str) -> None:
         if input_direction == "JUMP":
             player.jump()
-            player.change_locomotion_state(JumpingState())
+            player.change_locomotion_state(JumpingState(player))
         elif input_direction == "DASH":
             if player.dash_cooldown_timer <= 0:
                 player.change_locomotion_state(DashState(player))
         elif input_direction in ["LEFT", "RIGHT"]:
             # Ao receber um input de movimento, transiciona para Running
             # e imediatamente processa o input para definir a velocidade e a direção.
-            new_state = RunningState()
+            new_state = RunningState(player)
             player.change_locomotion_state(new_state)
             new_state.handle_input(player, input_direction)
 
@@ -56,24 +57,27 @@ class IdleState(PlayerState):
         if player.jump_buffer_timer > 0:
             player.jump()
             player.jump_buffer_timer = 0
-            player.change_locomotion_state(JumpingState())
+            player.change_locomotion_state(JumpingState(player))
             return
 
         if not player.is_on_ground(world_state):
             if player.y_vel < 0:
-                player.change_locomotion_state(JumpingState())
+                player.change_locomotion_state(JumpingState(player))
             elif player.y_vel > 0:
                 player.coyote_timer = player.COYOTE_TIMER_DURATION
-                player.change_locomotion_state(FallingState())
+                player.change_locomotion_state(FallingState(player))
             elif player.is_touching_wall_in_air(world_state):
                 player.change_locomotion_state(WallSlidingState(player))
 
 
 class RunningState(PlayerState):
+    def __init__(self, player: Player):
+        player.anim_manager.play("run")
+
     def handle_input(self, player: Player, input_direction: str) -> None:
         if input_direction == "JUMP":
             player.jump()
-            player.change_locomotion_state(JumpingState())
+            player.change_locomotion_state(JumpingState(player))
         elif input_direction == "DASH":
             if player.dash_cooldown_timer <= 0:
                 player.change_locomotion_state(DashState(player))
@@ -98,15 +102,18 @@ class RunningState(PlayerState):
         if player.jump_buffer_timer > 0:
             player.jump()
             player.jump_buffer_timer = 0
-            player.change_locomotion_state(JumpingState())
+            player.change_locomotion_state(JumpingState(player))
             return
 
         if not player.is_on_ground(world_state):
             player.coyote_timer = player.COYOTE_TIMER_DURATION
-            player.change_locomotion_state(FallingState())
+            player.change_locomotion_state(FallingState(player))
 
 
 class JumpingState(PlayerState):
+    def __init__(self, player: Player):
+        player.anim_manager.play("jump")
+
     def handle_input(self, player: Player, input_direction: str) -> None:
         if input_direction == "JUMP":
             player.jump_buffer_timer = player.JUMP_BUFFER_DURATION
@@ -124,18 +131,25 @@ class JumpingState(PlayerState):
 
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
         if player.y_vel >= 0:  # pico do pulo, começa a cair
-            player.change_locomotion_state(FallingState())
+            player.change_locomotion_state(FallingState(player))
         elif player.is_touching_wall_in_air(world_state) and player.horizontal_input_active:
             player.change_locomotion_state(WallSlidingState(player))
 
 
 class FallingState(PlayerState):
+    def __init__(self, player: Player) -> None:
+        if player.first_fall:
+            player.anim_manager.play("start")
+            player.first_fall = False
+        else:
+            player.anim_manager.play("fall")
+
     def handle_input(self, player: Player, input_direction: str) -> None:
         if input_direction == "JUMP":
             if player.coyote_timer > 0:
                 player.jump()
                 player.coyote_timer = 0
-                player.change_locomotion_state(JumpingState())
+                player.change_locomotion_state(JumpingState(player))
             else:
                 player.jump_buffer_timer = player.JUMP_BUFFER_DURATION
         elif input_direction == "RIGHT":
@@ -153,13 +167,14 @@ class FallingState(PlayerState):
 
 
 class WallSlidingState(PlayerState):
-    def __init__(self, player: Player):
+    def __init__(self, player: Player) -> None:
         player.x_vel = 0
+        player.anim_manager.play("wall_slide")
 
-    def handle_input(self, player: Player, input_direction: str):
+    def handle_input(self, player: Player, input_direction: str) -> None:
         if input_direction == "JUMP":
             player.wall_jump()
-            player.change_locomotion_state(JumpingState())
+            player.change_locomotion_state(JumpingState(player))
         elif input_direction == "RIGHT":
             player.x_vel = player.speed
             player.facing_direction = 'RIGHT'
@@ -168,17 +183,18 @@ class WallSlidingState(PlayerState):
             player.facing_direction = 'LEFT'
 
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
-        if not player.is_touching_wall_in_air(world_state):
-            player.change_locomotion_state(FallingState())
+        if not player.is_wall_sliding:
+            player.change_locomotion_state(FallingState(player))
         elif player.is_on_ground(world_state):
             player.change_locomotion_state(IdleState(player))
 
 
 class DashState(PlayerState):
-    def __init__(self, player: Player):
+    def __init__(self, player: Player) -> None:
         # seta o timer
         self.timer = player.dash_duration
         self.spawn_fx_timer = 0.05
+        player.anim_manager.play("dash")
 
         # aplica a velocidade do dach
         player.x_vel = (
@@ -190,7 +206,7 @@ class DashState(PlayerState):
     def handle_input(self, player: Player, input_direction: str) -> None:
         if input_direction == "JUMP":
             player.jump()
-            player.change_locomotion_state(JumpingState())
+            player.change_locomotion_state(JumpingState(player))
 
     def update(self, player: Player, world_state: dict, delta_time: float) -> None:
         # timer para o cooldown
@@ -218,11 +234,12 @@ class DashState(PlayerState):
             player.dash_cooldown_timer = player.dash_cooldown  # inicia o cooldown
 
 class HurtingState(PlayerState):
-    def __init__(self, player: Player):
+    def __init__(self, player: Player) -> None:
         self.invincibility_timer = 1.0
         self.flash_timer = 0.0
         self.flash_interval = 0.1
         player.is_visible = False
+        player.anim_manager.play("hit")
 
         # empurra o player para trás (knockback)
         player.y_vel = -player.jump_strength * 0.4
@@ -241,4 +258,4 @@ class HurtingState(PlayerState):
 
         if self.invincibility_timer <= 0:
             player.is_visible = True
-            player.change_locomotion_state(FallingState())
+            player.change_locomotion_state(FallingState(player))
