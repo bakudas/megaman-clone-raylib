@@ -1,21 +1,15 @@
 # game/self.py
 from __future__ import annotations
 
-from doctest import debug
-from typing import TYPE_CHECKING, get_origin
-from raylib.defines import KEY_LEFT, KEY_RIGHT, GLFW_KEY_SPACE, GLFW_KEY_X, GLFW_KEY_Z, GLFW_KEY_R
+from typing import TYPE_CHECKING
 import pyray as pr
 
-from game.player_states import PlayerState, IdleState, JumpingState, WallSlidingState, DashState, HurtingState, \
-    FallingState
+from game.player_states import PlayerState, HurtingState, FallingState
 from game.weapon_states import WeaponState, ReadyState
 from game.bullet import Bullet
 from game.events import PlayerEvent, GameEvent
 from game.observer import Subject
 from game.animation import AnimationManager
-
-if TYPE_CHECKING:
-    from game.platforms import Platform
 
 
 class Player(Subject):

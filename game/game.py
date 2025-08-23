@@ -9,6 +9,8 @@ from game.ui import PlayerUI
 from game.game_states import GameState, PlayingState
 from game.level_loader import LevelManager
 from .input_manager import InputManager, GameAction
+from game.reloader import reload_modules
+from game.file_watcher import start_watching
 
 
 class Game:
@@ -96,6 +98,9 @@ class Game:
 
         # Debug: Verificar se o gamepad foi detectado
         self.gamepad = 1
+
+        self.needs_reload = False
+        self.file_watcher = start_watching(self, path='game')  # Inicia o monitoramento
         
 
     def reset_game(self, player: Player, state: dict):
@@ -110,9 +115,91 @@ class Game:
     def get_previous_state(self) -> GameState:
         return self.previous_state
 
+    def reset_game_state(self):
+        """Reinicia o estado do jogo para refletir o código recarregado."""
+        print("--- RESETTING GAME STATE ---")
+        import pyray as pr
+
+        from game.game_event_handler import DropSystemHandler, VFXEventHandler, SoundEventHandler
+        from game.player import Player
+        from game.sfx_manager import SFXManager
+        from game.ui import PlayerUI
+        from game.game_states import GameState, PlayingState
+        from game.level_loader import LevelManager
+
+        # --- CARREGANDO O NÍVEL ---
+        self.level_content = LevelManager("levels/level_03.json")
+
+        # Estado inicial do jogador
+        self.player = Player(
+            x=self.level_content.level_objects["player_start"]["x"],
+            y=self.level_content.level_objects["player_start"]["y"],
+            width=32,
+            height=35,
+            speed=3,
+            jump_strength=7
+        )
+
+        # Player UI
+        self.ui = PlayerUI(self.player)
+
+        # Inicializar o Audio
+        pr.init_audio_device()
+        self.sfx_manager = SFXManager()
+        self.sfx_manager.load_sounds()
+
+        # Configuração da física do nosso mundo
+        self.world_state = {
+            "player_start_x_pos": self.level_content.level_objects["player_start"]["x"],
+            "player_start_y_pos": self.level_content.level_objects["player_start"]["y"],
+            "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
+            "wall_slide_gravity": 0.1,
+            "platforms": self.level_content.level_objects["platforms"],
+            "bullets": [],
+            "pickups": [],
+            "enemies": self.level_content.level_objects["enemies"],
+            "hazards": self.level_content.level_objects["hazards"],
+            "checkpoints": self.level_content.level_objects["checkpoints"],
+            "particles": [],
+            "after_images": []
+        }
+
+        # Cria o gerenciador de eventos
+        self.sound_handler = SoundEventHandler(self.sfx_manager)
+        self.vfx_handler = VFXEventHandler(self.world_state)
+        self.drop_handler = DropSystemHandler(self.world_state)
+
+        # inscreve o player e os inimigos no observador (sfx e vfx)
+        self.player.add_observer(self.sound_handler)
+        self.player.add_observer(self.vfx_handler)
+
+        # inscreve os inimigos no observadores (sfx, vfx e drop)
+        for e in self.world_state['enemies']:
+            e.add_observer(self.sound_handler)
+            e.add_observer(self.vfx_handler)
+            e.add_observer(self.drop_handler)
+
+        # --- Máquina de Estados ---
+        self.current_state: GameState = PlayingState(self)
+        self.previous_state: GameState = None
+        self.respawn_timer = 0.0
+        self.RESPAWN_DELAY = 1.0  # 1 segundo de tela preta antes de renascer
+
+        # Debug: Verificar se o gamepad foi detectado
+        self.gamepad = 1
+
+        self.current_state = PlayingState(self)
+        self.needs_reload = False
+
     def run(self):
         """O game loop principal agora vive aqui."""
         while not pr.window_should_close():
+            # --- HOT RELOAD CHECK ---
+            if self.needs_reload:
+                reload_modules()
+                self.reset_game_state()
+            # ------------------------
+
             delta_time = pr.get_frame_time()
 
             # Delege tudo para o estado atual
@@ -163,6 +250,8 @@ class Game:
 
     def cleanup(self):
         """Libera todos os recursos."""
+        self.file_watcher.stop()  # <<< PARE A THREAD DO WATCHER
+        self.file_watcher.join()
         self.sfx_manager.unload_sounds()
         pr.close_audio_device()
         pr.unload_render_texture(self.target_texture)
