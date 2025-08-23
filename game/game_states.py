@@ -94,6 +94,7 @@ class PlayingState(GameState):
         self.game.camera.begin_mode()
         for plat in self.game.world_state["platforms"]:
             plat.draw()
+            pass
         for hazard in self.game.world_state["hazards"]:
             hazard.draw()
         for cp in self.game.world_state["checkpoints"]:
@@ -109,6 +110,7 @@ class PlayingState(GameState):
         for particle in self.game.world_state["particles"]:
             particle.draw()
 
+        self.game.level_content.draw()
         self.game.player.draw()
         self.game.camera.end_mode()
         self.game.ui.draw()

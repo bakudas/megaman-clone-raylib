@@ -7,7 +7,7 @@ from game.camera import Camera
 from game.sfx_manager import SFXManager
 from game.ui import PlayerUI
 from game.game_states import GameState, PlayingState
-from game.level_loader import load_level
+from game.level_loader import LevelManager
 from .input_manager import InputManager, GameAction
 
 
@@ -37,12 +37,12 @@ class Game:
         self.camera = Camera(self.VIRTUAL_SCREEN_WIDTH, self.VIRTUAL_SCREEN_HEIGHT)
 
         # --- CARREGANDO O NÍVEL ---
-        self.level_content = load_level("levels/level_02.json")
+        self.level_content = LevelManager("levels/level_03.json")
 
         # Estado inicial do jogador
         self.player = Player(
-            x=self.level_content["start_position"]["x"],
-            y=self.level_content["start_position"]["y"],
+            x=self.level_content.level_objects["player_start"]["x"],
+            y=self.level_content.level_objects["player_start"]["y"],
             width=32,
             height=35,
             speed=3,
@@ -59,16 +59,16 @@ class Game:
 
         # Configuração da física do nosso mundo
         self.world_state = {
-            "player_start_x_pos": self.level_content["start_position"]["x"],
-            "player_start_y_pos": self.level_content["start_position"]["y"],
+            "player_start_x_pos": self.level_content.level_objects["player_start"]["x"],
+            "player_start_y_pos": self.level_content.level_objects["player_start"]["y"],
             "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
             "wall_slide_gravity": 0.1,
-            "platforms": self.level_content["platforms"],
+            "platforms": self.level_content.level_objects["platforms"],
             "bullets": [],
             "pickups": [],
-            "enemies": self.level_content["enemies"],
-            "hazards": self.level_content["hazards"],
-            "checkpoints": self.level_content["checkpoints"],
+            "enemies": self.level_content.level_objects["enemies"],
+            "hazards": self.level_content.level_objects["hazards"],
+            "checkpoints": self.level_content.level_objects["checkpoints"],
             "particles": [],
             "after_images": []
         }
