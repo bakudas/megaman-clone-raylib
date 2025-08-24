@@ -1,5 +1,9 @@
 # main.py
+import cProfile
+import pstats
 from game.game import Game
+
+profiling = True
 
 def main():
     """
@@ -14,4 +18,16 @@ def main():
         game.cleanup()
 
 if __name__ == "__main__":
-    main()
+    if not profiling:
+        main()
+        
+    # --- CÓDIGO DE PROFILING ---
+    # Cria a instância do jogo aqui
+    game_instance = Game()
+    
+    # Executa o jogo sob o profiler e salva os resultados em 'profile_stats'
+    cProfile.run('game_instance.run()', 'profile_stats')
+    
+    # Faz a limpeza depois que o jogo fecha
+    game_instance.cleanup()
+    # -------------------------

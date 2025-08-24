@@ -64,6 +64,7 @@ class Game:
             "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
             "wall_slide_gravity": 0.1,
             "platforms": self.level_content.level_objects["platforms"],
+            "quadtree": self.level_content.quadtree, # <--- ADICIONADO
             "bullets": [],
             "pickups": [],
             "enemies": self.level_content.level_objects["enemies"],

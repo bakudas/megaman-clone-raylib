@@ -1,11 +1,15 @@
 # game/level_loader.py
 import json
 import pyray as pr
+from typing import TYPE_CHECKING
 
+from game.quadtree import Quadtree
 from game.platforms import Platform
-from game.hazards import Hazard
 from game.enemy import Enemy
 from game.checkpoints import Checkpoint
+
+if TYPE_CHECKING:
+    from game.camera import Camera
 
 class LevelManager:
     def __init__(self, path: str):
@@ -13,11 +17,11 @@ class LevelManager:
         self.level_data: dict = None
         self.tileset_path: str = 'assets/tileset/Subway_tiles.png'
         self.tileset_texture = pr.load_texture(self.tileset_path)
+        self.quadtree: Quadtree = None
 
         with open(path, 'r') as f:
             self.level_data = json.load(f)
 
-        # Dicionários para guardar os objetos criados
         self.level_objects = {
             "platforms": [],
             "hazards": [],
@@ -25,62 +29,73 @@ class LevelManager:
             "checkpoints": [],
             "player_start": {},
         }
-
-        self.source_objects = {
-            "platforms": [],
-            "hazards": [],
-        }
-
         self.load_level()
 
-    def load_level(self) -> dict:
-        """
-        Carrega um nível a partir de um arquivo JSON e retorna
-        um dicionário com listas de todos os objetos do jogo.
-        """
-        # procura pelo level
-        level = self.level_data.get('levels', [])
+    def load_level(self):
+        level_json = self.level_data.get('levels', [])[0]
+        layers = level_json.get('layerInstances', [])
+        
+        tiles_layer = next((layer for layer in layers if layer['__identifier'] == 'tiles'), None)
+        entities_layer = next((layer for layer in layers if layer['__identifier'] == 'entities'), None)
 
-        # procura pelas camadas
-        layers = level[0].get('layerInstances', [])
-        layer_tile = layers[0]
+        if not tiles_layer:
+            return
 
-        # procura pelos tiles
-        tiles = layers[0].get('gridTiles', [])
-        tileset_path = layers[0]['__tilesetRelPath']
-        pr.load_image(tileset_path)
+        grid_size = tiles_layer['__gridSize']
+        
+        all_tiles_data = tiles_layer.get('gridTiles', [])
+        if not all_tiles_data:
+            return
 
-        # procura as entidades
-        entities = layers[1]['entityInstances'] if layers[1]['__identifier'] == 'entities' else None
+        min_x = min(t['px'][0] for t in all_tiles_data)
+        min_y = min(t['px'][1] for t in all_tiles_data)
+        max_x = max(t['px'][0] + grid_size for t in all_tiles_data)
+        max_y = max(t['px'][1] + grid_size for t in all_tiles_data)
+        level_boundary = pr.Rectangle(min_x, min_y, max_x - min_x, max_y - min_y)
+        
+        self.quadtree = Quadtree(level_boundary, capacity=4)
 
+        # Criar objetos Platform unificados e inseri-los em todos os lugares necessários
+        for tile_data in all_tiles_data:
+            dest_rect = pr.Rectangle(float(tile_data['px'][0]), float(tile_data['px'][1]), float(grid_size), float(grid_size))
+            source_rect = pr.Rectangle(float(tile_data['src'][0]), float(tile_data['src'][1]), float(grid_size), float(grid_size))
+            
+            # Criar o objeto unificado
+            platform = Platform(x=dest_rect.x, y=dest_rect.y, width=dest_rect.width, height=dest_rect.height, p_type='solid', source_rec=source_rect)
+            
+            # Adicionar à lista para a física
+            self.level_objects['platforms'].append(platform)
+            # Adicionar à Quadtree para renderização e física otimizada
+            self.quadtree.insert(platform, dest_rect)
 
-        # Cria os objetos
-        for tile in tiles:
-            self.source_objects['platforms'].append(tile)
-            plat = Platform(x=tile['px'][0], y=tile['px'][1], width=layer_tile['__gridSize'], height=layer_tile['__gridSize'], p_type='solid')
-            self.level_objects['platforms'].append(plat)
+        # Criar Entidades Dinâmicas (não vão para a quadtree de geometria estática)
+        if entities_layer:
+            for entity in entities_layer['entityInstances']:
+                tags = entity.get('__tags', [])
+                if not tags: continue
 
-        for entity in entities:
-            print(f'Entity: {entity}')
-            if entity['__tags'][0] == 'player_start':
-                self.level_objects['player_start']['x'], self.level_objects['player_start']['y'] = int(entity['px'][0]), int(entity['px'][1])
-            elif entity['__tags'][0] == 'enemy':
-                enemy = Enemy(x=entity['px'][0], y=entity['px'][1] - 16)
-                self.level_objects['enemies'].append(enemy)
-            elif entity['__tags'][0] == 'checkpoint':
-                checkpoint = Checkpoint(x=entity['px'][0], y=entity['px'][1], width=16, height=32)
-                self.level_objects['checkpoints'].append(checkpoint)
+                tag = tags[0]
+                x, y = float(entity['px'][0]), float(entity['px'][1])
 
+                if tag == 'player_start':
+                    self.level_objects['player_start'] = {'x': x, 'y': y}
+                elif tag == 'enemy':
+                    self.level_objects['enemies'].append(Enemy(x=x, y=y - 16))
+                elif tag == 'checkpoint':
+                    self.level_objects['checkpoints'].append(Checkpoint(x=x, y=y, width=16, height=32))
 
-    def draw(self) -> None:
-        """
-        Desenha e atualiza o level
-        """
-        grid_size = (16, 16)
-        level_data = self.source_objects['platforms']
+    def draw(self, camera: 'Camera') -> None:
+        if not self.quadtree:
+            return
 
-        for tile in level_data:
-            source_rec = pr.Rectangle(tile['src'][0], tile['src'][1], grid_size[0], grid_size[1])
-            dest_rec = pr.Rectangle(tile['px'][0], tile['px'][1], grid_size[0], grid_size[1])
-            origin = pr.Vector2(0, 0)
-            pr.draw_texture_pro(self.tileset_texture, source_rec, dest_rec, origin, 0.0, pr.WHITE)
+        view_rect = camera.get_world_view_rect()
+        view_rect_buffered = pr.Rectangle(
+            view_rect.x - 16, view_rect.y - 16,
+            view_rect.width + 32, view_rect.height + 32
+        )
+
+        drawable_platforms = self.quadtree.query(view_rect_buffered)
+
+        for platform in drawable_platforms:
+            platform.draw(self.tileset_texture)
+

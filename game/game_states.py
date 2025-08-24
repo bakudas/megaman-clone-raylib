@@ -92,17 +92,31 @@ class PlayingState(GameState):
     def draw(self):
         # A lógica de desenho principal vive aqui.
         self.game.camera.begin_mode()
-        for plat in self.game.world_state["platforms"]:
-            plat.draw()
-            pass
+
+        # A Quadtree no LevelManager agora desenha todos os objetos estáticos (tiles, plataformas)
+        self.game.level_content.draw(self.game.camera)
+
+        # Para objetos dinâmicos, ainda podemos usar um culling simples, pois são menos numerosos.
+        view_rect = self.game.camera.get_world_view_rect()
+
         for hazard in self.game.world_state["hazards"]:
-            hazard.draw()
+            hazard_rect = pr.Rectangle(hazard.x, hazard.y, hazard.width, hazard.height)
+            if pr.check_collision_recs(view_rect, hazard_rect):
+                hazard.draw()
         for cp in self.game.world_state["checkpoints"]:
-            cp.draw()
+            cp_rect = pr.Rectangle(cp.x, cp.y, cp.width, cp.height)
+            if pr.check_collision_recs(view_rect, cp_rect):
+                cp.draw()
         for pickup in self.game.world_state["pickups"]:
-            pickup.draw()
+            pickup_rect = pr.Rectangle(pickup.x_pos, pickup.y_pos, pickup.width, pickup.height)
+            if pr.check_collision_recs(view_rect, pickup_rect):
+                pickup.draw()
         for enemy in self.game.world_state['enemies']:
-            enemy.draw()
+            enemy_rect = pr.Rectangle(enemy.x_pos, enemy.y_pos, enemy.width, enemy.height)
+            if pr.check_collision_recs(view_rect, enemy_rect):
+                enemy.draw()
+        
+        # Balas e efeitos visuais são pequenos e numerosos, culling pode não valer a pena.
         for bullet in self.game.world_state["bullets"]:
             bullet.draw()
         for after_image in self.game.world_state["after_images"]:
@@ -110,7 +124,6 @@ class PlayingState(GameState):
         for particle in self.game.world_state["particles"]:
             particle.draw()
 
-        self.game.level_content.draw()
         self.game.player.draw()
         self.game.camera.end_mode()
         self.game.ui.draw()

@@ -6,6 +6,8 @@ from game.player import Player  # type hinting
 
 class Camera:
     def __init__(self, screen_width: int, screen_height: int) -> None:
+        self.screen_width = screen_width
+        self.screen_height = screen_height
         self.camera = pr.Camera2D()
         self.camera.target = pr.Vector2(0, 0)  # o ponto que a camera olha
         self.camera.offset = pr.Vector2(
@@ -17,6 +19,14 @@ class Camera:
         self.smoothing_factor: float = 0.05
         self.looking_ahead_distance: float = 2.5
         self.vertical_offset: float = -32
+
+    def get_world_view_rect(self) -> pr.Rectangle:
+        """
+        Retorna um retângulo representando a área visível da câmera no mundo.
+        """
+        top_left_x = self.camera.target.x - self.camera.offset.x
+        top_left_y = self.camera.target.y - self.camera.offset.y
+        return pr.Rectangle(top_left_x, top_left_y, self.screen_width, self.screen_height)
 
     def update(self, player: Player) -> None:
         """

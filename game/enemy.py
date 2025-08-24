@@ -44,14 +44,36 @@ class Enemy(Subject):
         """
         Atualiza toda a lógica do inimigo
         """
-        # flash de dano
         if self.is_flashing:
             self.flash_timer -= delta_time
             if self.flash_timer <= 0:
                 self.is_flashing = False
 
-        self.x_pos += self.x_vel
+        self._apply_horizontal_physics(world_state)
         self.ai_state.update(self, world_state, delta_time)
+
+    def _apply_horizontal_physics(self, world_state: dict):
+        quadtree = world_state.get("quadtree")
+        if not quadtree:
+            self.x_pos += self.x_vel
+            return
+
+        self.x_pos += self.x_vel
+        enemy_rect = pr.Rectangle(self.x_pos, self.y_pos, self.width, self.height)
+
+        nearby_platforms = quadtree.query(enemy_rect)
+
+        for plat in nearby_platforms:
+            if plat.type == "solid":
+                plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
+                if pr.check_collision_recs(enemy_rect, plat_rect):
+                    if self.x_vel > 0:  # Movendo para a direita
+                        self.x_pos = plat.x - self.width
+                    elif self.x_vel < 0:  # Movendo para a esquerda
+                        self.x_pos = plat.x + plat.width
+                    
+                    self.change_state_locomotion(TurningState(self))
+                    break
 
 
     def draw(self) -> None:
@@ -74,27 +96,27 @@ class Enemy(Subject):
         Verifica se há uma plataforma sólida à frente do inimigo para ele pisar.
         Este é o "sensor" de beirada do inimigo.
         """
-        check_x = 0
-        # O ponto de checagem fica à frente do inimigo, na direção que ele está olhando
-        if self.facing_direction == 'LEFT':
-            check_x = self.x_pos - 1 # 1 pixel à frente da sua borda esquerda
-        else: # RIGHT
-            check_x = self.x_pos + self.width + 1 # 1 pixel à frente da sua borda direita
+        quadtree = world_state.get("quadtree")
+        if not quadtree:
+            return True # Failsafe para não cair de beiradas se a quadtree não existir
 
-        # O ponto de checagem vertical é um pouco abaixo dos "pés" do inimigo
+        check_x = 0
+        if self.facing_direction == 'LEFT':
+            check_x = self.x_pos - 1
+        else: # RIGHT
+            check_x = self.x_pos + self.width + 1
+
         check_y = self.y_pos + self.height + 5
 
-        # debug
-        #print(check_x, check_y)
-        #pr.draw_rectangle(int(check_x), int(check_y), 1, 5, pr.BLACK)
+        # O retângulo de busca é pequeno, apenas na área do sensor
+        sensor_box = pr.Rectangle(check_x - 5, check_y - 5, 10, 10)
+        nearby_platforms = quadtree.query(sensor_box)
 
-        for plat in world_state.get("platforms", []):
+        for plat in nearby_platforms:
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
-            # Se o ponto de checagem está dentro de alguma plataforma, há chão à frente.
             if pr.check_collision_point_rec(pr.Vector2(check_x, check_y), plat_rect):
                 return True
 
-        # Se o loop terminar sem encontrar chão, não há nada à frente.
         return False
 
     # --- Métodos State Machine

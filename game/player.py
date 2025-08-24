@@ -73,7 +73,7 @@ class Player(Subject):
         self.wall_jump_scale_factor: float = 0.6
 
         # DASH
-        self.dash_speed: float = speed * 2.5
+        self.dash_speed: float = speed * 1.75
         self.dash_duration: float = 0.2
         self.dash_cooldown: float = 0.1
         self.dash_cooldown_timer: float = 0.0
@@ -365,9 +365,16 @@ class Player(Subject):
         """
         Verifica se o jogador está no chão.
         """
-        player_feet = pr.Rectangle(self.x_pos + self.width / 2 + 5 , self.bottom, self.width/5, 1)
+        quadtree = world_physics.get("quadtree")
+        if not quadtree:
+            return False
 
-        for plat in world_physics.get("platforms", []):
+        player_feet = pr.Rectangle(self.x_pos + self.width / 2 + 5, self.bottom, self.width / 5, 1)
+        
+        # Usa a quadtree para pegar apenas as plataformas próximas
+        nearby_platforms = quadtree.query(player_feet)
+
+        for plat in nearby_platforms:
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
             if pr.check_collision_recs(player_feet, plat_rect):
                 return True
@@ -378,12 +385,20 @@ class Player(Subject):
         if self.is_on_ground(world_state):
             return False
 
+        quadtree = world_state.get("quadtree")
+        if not quadtree:
+            return False
+
+        # Retângulo de busca um pouco maior que o jogador para detectar paredes próximas
+        query_box = pr.Rectangle(self.x_pos + self.width/2 - 5, self.y_pos, self.width/2 + 10, self.height)
+        nearby_platforms = quadtree.query(query_box)
+
         check_rect_right = pr.Rectangle(
             self.x_pos + self.width - 1, self.y_pos + 5, 2, self.height
         )
         check_rect_left = pr.Rectangle(self.x_pos + self.width/2 - 1, self.y_pos + 5, 2, self.height)
 
-        for plat in world_state.get("platforms", []):
+        for plat in nearby_platforms:
             if plat.type == "solid":
                 plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
                 if pr.check_collision_recs(
@@ -400,46 +415,44 @@ class Player(Subject):
         Aplica as forças de física (por enquanto, só gravidade) ao estado do jogador.
         :param world_state: world general physics.
         """
-        # Armazena a posição anterior para checagem de colisão
         previous_y_pos = self.y_pos
-
-        # Aplica a velocidade vertical
         self.y_pos += self.y_vel
 
-        # Checa colisão com plataformas
         collision_occurred = False
         player_rect = pr.Rectangle(self.x_pos + self.width/2, self.y_pos, int(self.width/2), int(self.height))
 
-        for plat in world_state.get("platforms", []):
-            plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
+        quadtree = world_state.get("quadtree")
+        if quadtree:
+            # O retângulo de busca é um pouco maior que o jogador para garantir a detecção
+            query_rect = pr.Rectangle(player_rect.x - 4, player_rect.y - 4, player_rect.width + 8, player_rect.height + 8)
+            nearby_platforms = quadtree.query(query_rect)
 
-            is_colliding = pr.check_collision_recs(player_rect, plat_rect)
-            is_falling = self.y_vel >= 0
-            is_rising = self.y_vel < 0
-            was_above = (previous_y_pos + self.height) <= plat.y
-            was_bellow = previous_y_pos >= (plat.y + plat.height)
+            for plat in nearby_platforms:
+                plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
 
-            if is_colliding:
-                # CASO 1: ATERRISSANDO NA PLATAFORMA
-                if is_falling and was_above:
-                    if plat.type == "solid" or plat.type == "pass-through":
-                        if isinstance(self.locomotion_state, FallingState):  # Só notifica se estava caindo
-                            self.notify(PlayerEvent.PLAYER_LANDED)
-                        self.y_pos = plat.y - self.height
+                is_colliding = pr.check_collision_recs(player_rect, plat_rect)
+                is_falling = self.y_vel >= 0
+                is_rising = self.y_vel < 0
+                was_above = (previous_y_pos + self.height) <= plat.y
+                was_bellow = previous_y_pos >= (plat.y + plat.height)
+
+                if is_colliding:
+                    if is_falling and was_above:
+                        if plat.type == "solid" or plat.type == "pass-through":
+                            if isinstance(self.locomotion_state, FallingState):
+                                self.notify(PlayerEvent.PLAYER_LANDED)
+                            self.y_pos = plat.y - self.height
+                            self.y_vel = 0
+                            collision_occurred = True
+                            break
+                    if plat.type == "solid" and is_rising and was_bellow:
+                        self.y_pos = plat.y + plat.height
                         self.y_vel = 0
                         collision_occurred = True
                         break
-                # CASO 2: BATENDO A CABEÇA NO FUNDO DA PLATAFORMA
-                if plat.type == "solid" and is_rising and was_bellow:
-                    self.y_pos = plat.y + plat.height
-                    self.y_vel = 0
-                    collision_occurred = True
-                    break
 
-        # Aplica gravidade se não estivermos no chão de uma plataforma
         if not collision_occurred:
             if self.is_touching_wall_in_air(world_state) and self.horizontal_input_active:
-                # Aplica uma gravidade reduzida e limita a velocidade de queda
                 self.y_vel += self.wall_slide_gravity
                 if self.y_vel > 2:
                     self.y_vel = 2
@@ -447,28 +460,29 @@ class Player(Subject):
                 self.y_vel += world_state["gravity"]
 
     def _apply_horizontal_physics(self, world_state: dict, delta_time: float):
-        # Aplica movimento horizontal
         self.x_pos += self.x_vel
 
         player_rect = pr.Rectangle(self.x_pos + self.width/2, self.y_pos, int(self.width/2), int(self.height))
         is_colliding_with_wall = False
 
-        for plat in world_state.get("platforms", []):
-            if plat.type == "solid":
-                plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
-                if pr.check_collision_recs(player_rect, plat_rect):
-                    is_colliding_with_wall = True
-                    # Corrige a posição baseado na direção do movimento original
-                    if self.x_vel > 0:  # Movendo para a direita
-                        self.x_pos = plat.x - self.width
-                        self.x_vel = 0
-                    elif self.x_vel < 0:  # Movendo para a esquerda
-                        self.x_pos = (plat.x + plat.width) - self.width/2
-                        self.x_vel = 0
-                    # Se x_vel é 0, a posição já foi corrigida no frame anterior.
-                    break  # Para após a primeira colisão
+        quadtree = world_state.get("quadtree")
+        if quadtree:
+            query_rect = pr.Rectangle(player_rect.x - 8, player_rect.y, player_rect.width + 16, player_rect.height)
+            nearby_platforms = quadtree.query(query_rect)
 
-        # Atualiza o estado de wall slide baseado na colisão
+            for plat in nearby_platforms:
+                if plat.type == "solid":
+                    plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
+                    if pr.check_collision_recs(player_rect, plat_rect):
+                        is_colliding_with_wall = True
+                        if self.x_vel > 0:
+                            self.x_pos = plat.x - self.width
+                            self.x_vel = 0
+                        elif self.x_vel < 0:
+                            self.x_pos = (plat.x + plat.width) - self.width/2
+                            self.x_vel = 0
+                        break
+
         if is_colliding_with_wall and self.y_vel > 0 and not self.is_on_ground(world_state):
             self.is_wall_sliding = True
         else:
