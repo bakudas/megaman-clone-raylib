@@ -1,14 +1,16 @@
 # game/game.py
 import pyray as pr
 
-from game.game_event_handler import DropSystemHandler, VFXEventHandler, SoundEventHandler
-from game.player import Player
 from game.camera import Camera
 from game.sfx_manager import SFXManager
 from game.ui import PlayerUI
 from game.game_states import GameState, PlayingState
 from game.level_loader import LevelManager
 from .input_manager import InputManager, GameAction
+from .world import World
+from .event_bus import EventBus
+from .systems import InputSystem, StateMachineSystem, PhysicsSystem, AnimationSystem, CameraSystem, RenderSystem, ShootingSystem, CollisionSystem, DamageSystem, CleanupSystem, AISystem, SoundSystem, DropSystem, GameStateSystem, InvincibilitySystem, PickupSystem
+from .entity_factory import create_player # Uma nova factory para criar entidades
 
 
 class Game:
@@ -20,8 +22,12 @@ class Game:
         self.SCALE_MULTIPLIER = 4
         self.SCREEN_WIDTH = self.VIRTUAL_SCREEN_WIDTH * self.SCALE_MULTIPLIER
         self.SCREEN_HEIGHT = self.VIRTUAL_SCREEN_HEIGHT * self.SCALE_MULTIPLIER
-        self.world_state: dict = {}
-        self.player: Player
+        
+        # --- Arquitetura ECS ---
+        self.world = World()
+        self.event_bus = EventBus()
+        self.systems = [] # Lista de sistemas a serem executados
+
         self.KILL_Y: int = 1000
         self.FPS: int = 60
         self.input_manager = InputManager()
@@ -39,54 +45,45 @@ class Game:
         # --- CARREGANDO O NÍVEL ---
         self.level_content = LevelManager("levels/level_03.json")
 
-        # Estado inicial do jogador
-        self.player = Player(
-            x=self.level_content.level_objects["player_start"]["x"],
-            y=self.level_content.level_objects["player_start"]["y"],
-            width=32,
-            height=35,
-            speed=3,
-            jump_strength=7
-        )
+        # Carrega os dados do nível (plataformas, posições de entidades, etc.) e cria as entidades no mundo.
+        self.level_content.load_level(self.world)
+
+        # --- Criação de Entidades ---
+        player_start_pos = self.level_content.level_objects["player_start"]
+        self.player_id = create_player(self.world, player_start_pos['x'], player_start_pos['y'])
 
         # Player UI
-        self.ui = PlayerUI(self.player)
+        self.ui = PlayerUI(self.world, self.player_id)
 
-        # Inicializar o Audio
+        # Inicializar o Áudio
         pr.init_audio_device()
         self.sfx_manager = SFXManager()
         self.sfx_manager.load_sounds()
 
-        # Configuração da física do nosso mundo
-        self.world_state = {
-            "player_start_x_pos": self.level_content.level_objects["player_start"]["x"],
-            "player_start_y_pos": self.level_content.level_objects["player_start"]["y"],
-            "gravity": 0.3,  # um valor menor funciona melhor para 60 FPS
-            "wall_slide_gravity": 0.1,
-            "platforms": self.level_content.level_objects["platforms"],
-            "bullets": [],
-            "pickups": [],
-            "enemies": self.level_content.level_objects["enemies"],
-            "hazards": self.level_content.level_objects["hazards"],
-            "checkpoints": self.level_content.level_objects["checkpoints"],
-            "particles": [],
-            "after_images": []
-        }
+        # Instâncias dos Sistemas
+        self.render_system = RenderSystem()
 
-        # Cria o gerenciador de eventos
-        self.sound_handler = SoundEventHandler(self.sfx_manager)
-        self.vfx_handler = VFXEventHandler(self.world_state)
-        self.drop_handler = DropSystemHandler(self.world_state)
+        # --- Configuração dos Sistemas ---
+        # A ordem é importante!
+        self.systems.append(InputSystem(self.input_manager, self.event_bus))
+        self.systems.append(StateMachineSystem(self.world, self.event_bus))
+        self.systems.append(AISystem(self.world, self.event_bus))
+        self.systems.append(ShootingSystem(self.world, self.event_bus)) # Reage aos eventos de input/state machine
+        self.systems.append(PhysicsSystem(gravity=0.3, quadtree=self.level_content.level_objects["quadtree"]))
+        self.systems.append(AnimationSystem())
+        self.systems.append(CameraSystem(self.camera))
+        self.systems.append(CollisionSystem(self.event_bus))
+        self.systems.append(DamageSystem(self.world, self.event_bus))
+        self.systems.append(PickupSystem(self.world, self.event_bus))
+        self.systems.append(InvincibilitySystem())
 
-        # inscreve o player e os inimigos no observador (sfx e vfx)
-        self.player.add_observer(self.sound_handler)
-        self.player.add_observer(self.vfx_handler)
+        # Sistemas reativos a eventos
+        self.systems.append(SoundSystem(self.event_bus, self.sfx_manager))
+        self.systems.append(DropSystem(self.world, self.event_bus))
+        self.systems.append(GameStateSystem(self.world, self.event_bus))
 
-        # inscreve os inimigos no observadores (sfx, vfx e drop)
-        for e in self.world_state['enemies']:
-            e.add_observer(self.sound_handler)
-            e.add_observer(self.vfx_handler)
-            e.add_observer(self.drop_handler)
+        # Sistemas de limpeza devem rodar por último
+        self.systems.append(CleanupSystem())
 
         # --- Máquina de Estados ---
         self.current_state: GameState = PlayingState(self)
@@ -96,12 +93,6 @@ class Game:
 
         # Debug: Verificar se o gamepad foi detectado
         self.gamepad = 1
-        
-
-    def reset_game(self, player: Player, state: dict):
-        self.world_state = state
-        player.x_pos = self.world_state["player_start_x_pos"]
-        player.y_pos = self.world_state["player_start_y_pos"]
 
     def change_state(self, new_state: GameState):
         self.previous_state = self.current_state
@@ -115,22 +106,20 @@ class Game:
         while not pr.window_should_close():
             delta_time = pr.get_frame_time()
 
-            # Delege tudo para o estado atual
-            self.current_state.handle_input()
+            # O loop principal agora itera sobre os sistemas
+            for system in self.systems:
+                system.update(self.world, delta_time)
+
             self.current_state.update(delta_time)
 
             # Lógica de desenho
             pr.begin_texture_mode(self.target_texture)
             pr.clear_background(pr.BLACK)  # Fundo das letterboxes
-            backgroun_visibility = True
-            pr.clear_background(pr.BLANK if pr.is_window_state(pr.FLAG_WINDOW_TRANSPARENT) and not backgroun_visibility else pr.BLUE)
+            pr.clear_background(pr.BLUE)
             self.current_state.draw()
             pr.end_texture_mode()
 
             pr.begin_drawing()
-
-            pr.clear_background(pr.BLANK if pr.is_window_state(pr.FLAG_WINDOW_TRANSPARENT) and not backgroun_visibility else pr.BLUE)
-
             # Desenha a textura final na tela
             source_rec = pr.Rectangle(0, 0, self.target_texture.texture.width, -self.target_texture.texture.height)
             dest_rec = pr.Rectangle(0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
@@ -163,6 +152,7 @@ class Game:
 
     def cleanup(self):
         """Libera todos os recursos."""
+        self.level_content.unload()
         self.sfx_manager.unload_sounds()
         pr.close_audio_device()
         pr.unload_render_texture(self.target_texture)

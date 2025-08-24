@@ -3,7 +3,7 @@ from typing import Literal
 import pyray as pr
 
 # Usamos Literal para garantir que o tipo só possa ser 'solid' ou 'pass-through'
-PlatformType = Literal["solid", "pass-through"]
+PlatformType = Literal["solid", "pass_through", "no_collision"]
 
 
 class Platform:

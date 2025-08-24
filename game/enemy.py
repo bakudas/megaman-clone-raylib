@@ -69,6 +69,20 @@ class Enemy(Subject):
 
     # --- Métodos de verificação ---
 
+    def _get_nearby_platforms(self, all_platforms: list, check_radius: float = 64.0) -> list:
+        """
+        Filtra a lista de plataformas para incluir apenas aquelas que estão próximas.
+        Otimização para a IA não checar o nível inteiro.
+        """
+        nearby_platforms = []
+        enemy_center_x = self.x_pos + self.width / 2
+        for plat in all_platforms:
+            # Verifica se a plataforma está horizontalmente dentro do raio de checagem
+            if (plat.x < enemy_center_x + check_radius and
+                    plat.x + plat.width > enemy_center_x - check_radius):
+                nearby_platforms.append(plat)
+        return nearby_platforms
+
     def is_ground_ahead(self, world_state: dict) -> bool:
         """
         Verifica se há uma plataforma sólida à frente do inimigo para ele pisar.
@@ -88,7 +102,8 @@ class Enemy(Subject):
         #print(check_x, check_y)
         #pr.draw_rectangle(int(check_x), int(check_y), 1, 5, pr.BLACK)
 
-        for plat in world_state.get("platforms", []):
+        # Otimização: checa apenas plataformas próximas
+        for plat in self._get_nearby_platforms(world_state.get("platforms", [])):
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
             # Se o ponto de checagem está dentro de alguma plataforma, há chão à frente.
             if pr.check_collision_point_rec(pr.Vector2(check_x, check_y), plat_rect):

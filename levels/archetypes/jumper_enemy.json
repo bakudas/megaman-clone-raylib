@@ -1,0 +1,22 @@
+{
+  "components": {
+    "TransformComponent": { "width": 32, "height": 32 },
+    "PhysicsComponent": { "facing_direction": "LEFT" },
+    "HealthComponent": { "current_health": 3, "max_health": 3, "lives": 1 },
+    "PhysicsStatusComponent": {},
+    "CollisionComponent": { "collision_layer": "enemy" },
+    "AIControllerComponent": { "attack_cooldown": 3.0 },
+    "CharacterControllerComponent": {
+      "speed": 1.5,
+      "jump_strength": 6.0,
+      "charge_run_speed": 0,
+      "dash_speed": 0,
+      "dash_duration": 0,
+      "dash_cooldown": 0
+    },
+    "StateMachineComponent": {
+      "state": "JumperIdleState",
+      "weapon_state": "ReadyState" 
+    }
+  }
+}

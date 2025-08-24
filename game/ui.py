@@ -1,32 +1,34 @@
 # game/ui.py
 import pyray as pr
 from game.observer import Observer
-from game.player import Player
-from game.events import GameEvent, PlayerEvent
+from game.events import PlayerEvent
+from game.world import World
+from game.components import HealthComponent
 
-class PlayerUI(Observer):
-    def __init__(self, player: Player):
-        self.player = player
-        # Inscreve a UI para receber notificações do jogador
-        self.player.add_observer(self)
+class PlayerUI:
+    def __init__(self, world: World, player_id: int):
+        self.world = world
+        self.player_id = player_id
+        # TODO: A UI deveria se inscrever em um EventBus global para reações
+        # como piscar a barra de vida ao tomar dano.
 
-    def on_notify(self, event, **kwargs):
-        # A UI pode reagir a diferentes eventos
-        if event == PlayerEvent.PLAYER_HURT:
-            print('Ui received PLAYER_HURT event!')
+    # def on_notify(self, event, **kwargs):
+    #     if event == PlayerEvent.PLAYER_HURT:
+    #         print('Ui received PLAYER_HURT event!')
 
     def draw(self):
         """
         Desenha os elementos de UI
         """
+        # Busca o componente de vida do jogador no mundo a cada frame
+        health_comp = self.world.components[HealthComponent].get(self.player_id)
+        if not health_comp:
+            return # Não desenha nada se o jogador não tiver vida (ou não existir)
+
         # --- barra de vida ---
-        # (um simples container)
-        pr.draw_rectangle(10, 10, self.player.MAX_HEALTH * 2, 10, pr.BLACK)
-        # vida atual
-        pr.draw_rectangle(10, 10, self.player.health * 2, 10, pr.YELLOW)
-        # borda
-        pr.draw_rectangle_lines(10, 10, self.player.MAX_HEALTH * 2, 10, pr.WHITE)
+        pr.draw_rectangle(10, 10, health_comp.max_health * 2, 10, pr.BLACK)
+        pr.draw_rectangle(10, 10, health_comp.current_health * 2, 10, pr.YELLOW)
+        pr.draw_rectangle_lines(10, 10, health_comp.max_health * 2, 10, pr.WHITE)
 
         # --- Contador de Vidas ---
-        # (Um simples texto "x LIVES")
-        pr.draw_text(f"x {self.player.lives}", 10, 25, 10, pr.WHITE)
+        pr.draw_text(f"x {health_comp.lives}", 10, 25, 10, pr.WHITE)

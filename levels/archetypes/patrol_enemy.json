@@ -1,0 +1,18 @@
+{
+  "components": {
+    "TransformComponent": { "width": 32, "height": 32 },
+    "PhysicsComponent": { "facing_direction": "LEFT" },
+    "HealthComponent": { "current_health": 2, "max_health": 2, "lives": 1 },
+    "PhysicsStatusComponent": {},
+    "CollisionComponent": { "collision_layer": "enemy" },
+    "EnemyAIComponent": {
+        "speed": 0.4,
+        "state": "PatrollingState"
+    },
+    "LootDropComponent": {
+        "drop_table": {
+            "levels/archetypes/health_pickup.json": 0.3
+        }
+    }
+  }
+}

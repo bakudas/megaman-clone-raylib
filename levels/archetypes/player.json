@@ -1,0 +1,23 @@
+{
+  "components": {
+    "TransformComponent": { "width": 32, "height": 35 },
+    "PhysicsComponent": {},
+    "HealthComponent": { "current_health": 28, "max_health": 28, "lives": 3 },
+    "InputReceiverComponent": {},
+    "CharacterControllerComponent": {
+      "speed": 3,
+      "charge_run_speed": 3.75,
+      "jump_strength": 7,
+      "dash_speed": 7.5,
+      "dash_duration": 0.2,
+      "dash_cooldown": 0.1
+    },
+    "PhysicsStatusComponent": {},
+    "CollisionComponent": { "collision_layer": "player" },
+    "AnimationComponent": { "sprite_sheet": "assets/sprites/megaman-x-spritesheet.png" },
+    "StateMachineComponent": {
+      "state": "FallingState",
+      "weapon_state": "ReadyState"
+    }
+  }
+}

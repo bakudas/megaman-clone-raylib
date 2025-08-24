@@ -85,6 +85,7 @@ class Player(Subject):
         # state machine
         self.locomotion_state: PlayerState = FallingState(self)
         self.weapon_state: WeaponState = ReadyState()
+        self.landed_this_frame: bool = False
 
         # debug
         self.debug: bool = False
@@ -118,7 +119,7 @@ class Player(Subject):
         Atualiza toda a lógica do player
         """
         # self.x_vel = 0 # Reseta a intenção de movimento
-
+        self.landed_this_frame = False
 
         # atualiza o cooldown do dash
         if self.dash_cooldown > 0:
@@ -361,13 +362,27 @@ class Player(Subject):
         """
         return self.y_pos + self.height
 
+    def _get_nearby_platforms(self, all_platforms: list, check_radius: float = 250.0) -> list:
+        """
+        Filtra a lista de plataformas para incluir apenas aquelas que estão próximas ao jogador.
+        Otimização crucial para evitar checar colisões com o nível inteiro.
+        """
+        nearby_platforms = []
+        player_center_x = self.x_pos + self.width / 2
+        for plat in all_platforms:
+            # Verifica se a plataforma está horizontalmente dentro do raio de checagem
+            if (plat.x < player_center_x + check_radius and
+                    plat.x + plat.width > player_center_x - check_radius):
+                nearby_platforms.append(plat)
+        return nearby_platforms
+
     def is_on_ground(self, world_physics: dict) -> bool:
         """
         Verifica se o jogador está no chão.
         """
         player_feet = pr.Rectangle(self.x_pos + self.width / 2 + 5 , self.bottom, self.width/5, 1)
 
-        for plat in world_physics.get("platforms", []):
+        for plat in self._get_nearby_platforms(world_physics.get("platforms", [])):
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
             if pr.check_collision_recs(player_feet, plat_rect):
                 return True
@@ -383,8 +398,8 @@ class Player(Subject):
         )
         check_rect_left = pr.Rectangle(self.x_pos + self.width/2 - 1, self.y_pos + 5, 2, self.height)
 
-        for plat in world_state.get("platforms", []):
-            if plat.type == "solid":
+        for plat in self._get_nearby_platforms(world_state.get("platforms", [])):
+            if plat.type in ["solid", "pass_through"]:
                 plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
                 if pr.check_collision_recs(
                     check_rect_right, plat_rect
@@ -410,7 +425,8 @@ class Player(Subject):
         collision_occurred = False
         player_rect = pr.Rectangle(self.x_pos + self.width/2, self.y_pos, int(self.width/2), int(self.height))
 
-        for plat in world_state.get("platforms", []):
+        # Otimização: checa apenas plataformas próximas
+        for plat in self._get_nearby_platforms(world_state.get("platforms", [])):
             plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
 
             is_colliding = pr.check_collision_recs(player_rect, plat_rect)
@@ -422,11 +438,12 @@ class Player(Subject):
             if is_colliding:
                 # CASO 1: ATERRISSANDO NA PLATAFORMA
                 if is_falling and was_above:
-                    if plat.type == "solid" or plat.type == "pass-through":
+                    if plat.type in ["solid", "pass_through"]:
                         if isinstance(self.locomotion_state, FallingState):  # Só notifica se estava caindo
                             self.notify(PlayerEvent.PLAYER_LANDED)
                         self.y_pos = plat.y - self.height
                         self.y_vel = 0
+                        self.landed_this_frame = True
                         collision_occurred = True
                         break
                 # CASO 2: BATENDO A CABEÇA NO FUNDO DA PLATAFORMA
@@ -453,8 +470,9 @@ class Player(Subject):
         player_rect = pr.Rectangle(self.x_pos + self.width/2, self.y_pos, int(self.width/2), int(self.height))
         is_colliding_with_wall = False
 
-        for plat in world_state.get("platforms", []):
-            if plat.type == "solid":
+        # Otimização: checa apenas plataformas próximas
+        for plat in self._get_nearby_platforms(world_state.get("platforms", [])):
+            if plat.type in ["solid", "pass_through"]:
                 plat_rect = pr.Rectangle(plat.x, plat.y, plat.width, plat.height)
                 if pr.check_collision_recs(player_rect, plat_rect):
                     is_colliding_with_wall = True

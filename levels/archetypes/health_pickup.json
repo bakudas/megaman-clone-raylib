@@ -1,0 +1,11 @@
+{
+  "components": {
+    "TransformComponent": { "width": 12, "height": 12 },
+    "CollisionComponent": { "collision_layer": "pickup" },
+    "SpriteComponent": { "color": [255, 109, 194, 255] },
+    "PickupComponent": {
+      "type": "HEALTH",
+      "value": 10
+    }
+  }
+}
