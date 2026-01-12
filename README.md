@@ -35,6 +35,10 @@ Para rodar o projeto localmente, siga estes passos:
 
 2.  **Execute o jogo:**
     ```bash
+    # Sincroniza o projeto e baixa as ferramentas necessárias
+    uv sync
+
+    # Rodar o jogo
     uv run main.py
     ```
 
